@@ -7,6 +7,12 @@ To use just start a debug session with a program using Honeycomb.io.
 The logs will appear in a new tab in the debugger session.
 <!-- Plugin description end -->
 
+minimum debug log reqired and here is example for dependecies
+
+```xml
+<ItemGroup>
+    <PackageReference Include="Ozkanpakdil.OpenTelemetry.Exporter.Json.Console" Version="1.0.13" />
+```
 ### Dev
 
 To edit and test the plugin, just open this project with [InteliJ IDEA](https://www.jetbrains.com/idea/) and run the plugin with predefined run configuration
