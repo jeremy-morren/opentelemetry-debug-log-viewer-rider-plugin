@@ -33,11 +33,12 @@ jobs:
           name: "Opentelemetry-Debug-Log-Viewer-$VERSION.zip"
           path: "Opentelemetry-Debug-Log-Viewer-$VERSION.zip"
 
-      - name: Release with Notes
-        uses: softprops/action-gh-release@v1
+      - uses: "marvinpinto/action-automatic-releases@latest"
         with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "latest_dev"
+          prerelease: true
+          title: "Development Build"
           files: |
-            ./build/distributions/Opentelemetry-Debug-Log-Viewer-$VERSION.zip
-          tag_name: ${{ steps.tag.outputs.release_date }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            build/distributions/Opentelemetry-Debug-Log-Viewer-*.zip
+        id: "automatic_releases"
