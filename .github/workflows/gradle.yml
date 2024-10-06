@@ -30,12 +30,12 @@ jobs:
         with:
           name: Package
           path: build/distributions
-      - uses: "marvinpinto/action-automatic-releases@latest"
-        with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "latest_dev"
-          prerelease: true
-          title: "Development Build"
-          files: |
-            build/distributions/*
-        id: "automatic_releases"
+#      - uses: "marvinpinto/action-automatic-releases@latest"
+#        with:
+#          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+#          automatic_release_tag: "latest_dev"
+#          prerelease: true
+#          title: "Development Build"
+#          files: |
+#            build/distributions/*
+#        id: "automatic_releases"
