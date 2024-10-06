@@ -20,19 +20,13 @@ jobs:
         with:
           java-version: '23'
           distribution: 'temurin'
-      - name: Extract version from Gradle properties
-        run: |
-          VERSION=$(./gradlew properties -q --console=plain | grep '^version:' | cut -d ':' -f2- | tr -d ' ')
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
       - name: Build with Gradle Wrapper
         run: ./gradlew :buildPlugin -PbuildType=stable
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: "Opentelemetry-Debug-Log-Viewer-$VERSION.zip"
-          path: "Opentelemetry-Debug-Log-Viewer-$VERSION.zip"
-
+          name: Package
+          path: build/distributions
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
@@ -40,5 +34,5 @@ jobs:
           prerelease: true
           title: "Development Build"
           files: |
-            build/distributions/Opentelemetry-Debug-Log-Viewer-*.zip
+            build/distributions/*
         id: "automatic_releases"
