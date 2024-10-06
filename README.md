@@ -6,16 +6,18 @@ This plugin allow you to see, instantly view, opentelemetry logs, in a nice way,
 - [Honeycomb.io](https://www.honeycomb.io/)
 
 To use just start a debug session with a program.
-The logs will appear in a new tab in the debugger session.
+The logs will appear in a new tab(Opentelemetry tab) in the debugger session.
 <!-- Plugin description end -->
 
 You can enable opentelemetry debug logs with below dependency in your dotnet project
 
 https://www.nuget.org/packages/Ozkanpakdil.OpenTelemetry.Exporter.Json.Console
 ```xml
-
 <ItemGroup>
-    <PackageReference Include="Ozkanpakdil.OpenTelemetry.Exporter.Json.Console" Version="1.0.13"/>
+    ...
+    <PackageReference Include="Ozkanpakdil.OpenTelemetry.Exporter.Json.Console" Version="1.0.13" />
+    ...
+</ItemGroup>
 ```
 
 ### Dev
@@ -33,3 +35,7 @@ Then the plugins will be in `build/distributions`
 ### Screenshot
 
 ![Screenshot](screenshots/screenshot1.png)
+
+Used https://github.com/ozkanpakdil/opentelemetry-json-console-exporter/tree/main/demo for testing.
+
+Kudos to https://github.com/Socolin/ApplicationInsightsRiderPlugin
