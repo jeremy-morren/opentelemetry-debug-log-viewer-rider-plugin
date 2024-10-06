@@ -36,6 +36,14 @@ Then the plugins will be in `build/distributions`
 
 ![Screenshot](screenshots/screenshot1.png)
 
+### How to use
+
 Used https://github.com/ozkanpakdil/opentelemetry-json-console-exporter/tree/main/demo for testing.
 
+### Kudos
+
 Kudos to https://github.com/Socolin/ApplicationInsightsRiderPlugin
+
+### Latest dev version
+
+Latest version can be found [here](https://github.com/ozkanpakdil/opentelemetry-debug-log-viewer-rider-plugin/releases/tag/latest_dev)
