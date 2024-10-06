@@ -1,18 +1,19 @@
 package io.github.ozkanpakdil.opentelemetry.ui;
 
 import io.github.ozkanpakdil.opentelemetry.Telemetry;
-import io.github.ozkanpakdil.opentelemetry.TelemetryType;
 import io.github.ozkanpakdil.opentelemetry.utils.TimeSpan;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.table.AbstractTableModel;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 public class TelemetryTableModel extends AbstractTableModel {
-    private final String[] columnNames = new String[]{
+    private final String[] columnNames = new String[] {
             "timestamp", "duration", "data"
     };
-    private final Class<?>[] columnClass = new Class[]{
+    private final Class<?>[] columnClass = new Class[] {
             Date.class, TimeSpan.class, Telemetry.class
     };
     private final List<Telemetry> telemetries;

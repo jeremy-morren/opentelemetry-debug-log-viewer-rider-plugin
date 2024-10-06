@@ -1,6 +1,7 @@
 package io.github.ozkanpakdil.opentelemetry.ui.components;
 
 import com.intellij.icons.AllIcons;
+import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.ToggleAction;
 import io.github.ozkanpakdil.opentelemetry.OpentelemetryBundle;
@@ -27,5 +28,10 @@ public class ChangeFilterModeToolbarAction extends ToggleAction {
 
     public void setSelected(@NotNull AnActionEvent actionEvent, boolean state) {
         AppSettingState.getInstance().filterTelemetryMode.setValue(mode);
+    }
+
+    @Override
+    public @NotNull ActionUpdateThread getActionUpdateThread() {
+        return ActionUpdateThread.EDT;
     }
 }

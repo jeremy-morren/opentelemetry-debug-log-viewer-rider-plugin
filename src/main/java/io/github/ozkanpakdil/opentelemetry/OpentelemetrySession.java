@@ -17,10 +17,8 @@ import javax.swing.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import java.util.stream.Stream;
 
 public class OpentelemetrySession {
@@ -35,7 +33,6 @@ public class OpentelemetrySession {
     @NotNull
     private final List<Telemetry> filteredTelemetries = new ArrayList<>();
     @NotNull
-    private final Set<TelemetryType> visibleTelemetryTypes = new HashSet<>();
     private final Lifetime lifetime;
     @NotNull
     private String filter = "";
@@ -52,11 +49,6 @@ public class OpentelemetrySession {
         this.telemetryFactory = telemetryFactory;
         this.dotNetDebugProcess = dotNetDebugProcess;
         this.lifetime = dotNetDebugProcess.getSessionLifetime();
-
-        this.visibleTelemetryTypes.add(TelemetryType.Message);
-        this.visibleTelemetryTypes.add(TelemetryType.Request);
-        this.visibleTelemetryTypes.add(TelemetryType.Exception);
-        this.visibleTelemetryTypes.add(TelemetryType.Unk);
 
         projectSettingsState = ProjectSettingsState.getInstance(dotNetDebugProcess.getProject());
 
@@ -86,22 +78,6 @@ public class OpentelemetrySession {
             }
             return Unit.INSTANCE;
         });
-    }
-
-    public void setTelemetryFiltered(
-            @NotNull TelemetryType telemetryType,
-            boolean hidden
-    ) {
-        if (hidden) {
-            this.visibleTelemetryTypes.remove(telemetryType);
-        } else {
-            this.visibleTelemetryTypes.add(telemetryType);
-        }
-        updateFilteredTelemetries();
-    }
-
-    public boolean isTelemetryVisible(@NotNull TelemetryType telemetryType) {
-        return this.visibleTelemetryTypes.contains(telemetryType);
     }
 
     public void updateFilter(@NonNull String filter) {
@@ -180,9 +156,6 @@ public class OpentelemetrySession {
     }
 
     private boolean isTelemetryVisible(@NotNull Telemetry telemetry) {
-        if (!visibleTelemetryTypes.contains(telemetry.getType()))
-            return false;
-
         for (String filteredLog : projectSettingsState.filteredLogs.getValue()) {
             if (projectSettingsState.caseInsensitiveFiltering.getValue()) {
                 if (telemetry.getLowerCaseJson().contains(filteredLog.toLowerCase()))

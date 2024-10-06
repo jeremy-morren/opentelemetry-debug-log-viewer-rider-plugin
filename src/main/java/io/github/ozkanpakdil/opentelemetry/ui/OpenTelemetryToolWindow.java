@@ -24,39 +24,31 @@ import com.intellij.openapi.editor.highlighter.EditorHighlighterFactory;
 import com.intellij.openapi.editor.impl.softwrap.SoftWrapAppliancePlaces;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
-import com.intellij.ui.JBColor;
 import com.intellij.ui.LanguageTextField;
 import com.intellij.ui.components.fields.ExtendableTextField;
 import com.intellij.ui.table.JBTable;
 import com.intellij.unscramble.AnalyzeStacktraceUtil;
 import com.intellij.util.concurrency.AppExecutorUtil;
-import com.intellij.util.ui.JBUI;
 import com.jetbrains.rd.util.lifetime.Lifetime;
 import io.github.ozkanpakdil.opentelemetry.OpentelemetrySession;
 import io.github.ozkanpakdil.opentelemetry.Telemetry;
-import io.github.ozkanpakdil.opentelemetry.TelemetryType;
 import io.github.ozkanpakdil.opentelemetry.settings.AppSettingState;
 import io.github.ozkanpakdil.opentelemetry.ui.components.AutoScrollToTheEndToolbarAction;
 import io.github.ozkanpakdil.opentelemetry.ui.components.ClearApplicationInsightsLogToolbarAction;
-import io.github.ozkanpakdil.opentelemetry.ui.components.ColorBox;
 import io.github.ozkanpakdil.opentelemetry.ui.components.OptionsToolbarAction;
 import io.github.ozkanpakdil.opentelemetry.ui.components.ToggleCaseInsensitiveSearchToolbarAction;
 import io.github.ozkanpakdil.opentelemetry.ui.renderers.TelemetryDateRender;
 import io.github.ozkanpakdil.opentelemetry.ui.renderers.TelemetryRender;
-import io.github.ozkanpakdil.opentelemetry.ui.renderers.TelemetryTypeRender;
 import kotlin.Unit;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
-import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 public class OpenTelemetryToolWindow {
@@ -79,8 +71,6 @@ public class OpenTelemetryToolWindow {
     private final Project project;
     @NotNull
     private final TelemetryRender telemetryRender;
-    @NotNull
-    private final Map<TelemetryType, Integer> telemetryCountPerType = new HashMap<>();
     @NotNull
     private final OpentelemetrySession opentelemetrySession;
     private final Lifetime lifetime;
@@ -120,7 +110,6 @@ public class OpenTelemetryToolWindow {
 
         this.telemetryRender = new TelemetryRender(lifetime);
         logsTable.setDefaultRenderer(Telemetry.class, telemetryRender);
-        logsTable.setDefaultRenderer(TelemetryType.class, new TelemetryTypeRender());
         logsTable.setDefaultRenderer(Date.class, new TelemetryDateRender());
         logsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
@@ -169,50 +158,38 @@ public class OpenTelemetryToolWindow {
 
     }
 
-    @NotNull
-    private JLabel createTitleLabel(String label) {
-        JLabel title = new JLabel("<html><b>" + label + "</b></html>");
-        Font font = title.getFont();
-        font.deriveFont(Font.BOLD);
-        title.setFont(font);
-        return title;
-    }
-
-    @NotNull
-    private GridBagConstraints createConstraint(int x, int y, int padX) {
-        GridBagConstraints gridConstraints = new GridBagConstraints();
-        gridConstraints.gridx = x;
-        gridConstraints.gridy = y;
-        gridConstraints.gridheight = 1;
-        gridConstraints.gridwidth = 1;
-        gridConstraints.fill = GridBagConstraints.HORIZONTAL;
-        gridConstraints.weightx = 1;
-        gridConstraints.weighty = 0;
-        gridConstraints.anchor = GridBagConstraints.NORTHEAST;
-        gridConstraints.insets = JBUI.insetsLeft(padX);
-        return gridConstraints;
-    }
-
     private void updateJsonPreview(String text) {
         StringBuilder sb = new StringBuilder();
-        // A bit hackish, replace leading space with tabs for better formatting. `gson` is not giving any option on pretty print (maybe need to try another one ?)
-        for (String line : text.split("\n")) {
-            int i;
-            for (i = 0; i < line.length() && line.charAt(i) == ' '; i++)
-                ;
-            if (i > 0) {
-                for (int j = 0; j < i / 2; j++)
-                    sb.append('\t');
-                sb.append(line.substring(i));
+        String[] lines = text.split("\n");
+
+        for (String line : lines) {
+            int leadingSpaces = countLeadingSpaces(line);
+
+            if (leadingSpaces > 0) {
+                int tabs = leadingSpaces / 2;
+                sb.append("\t".repeat(tabs))
+                        .append(line.substring(leadingSpaces));
             } else {
                 sb.append(line);
             }
+
             sb.append('\n');
         }
+
         ApplicationManager.getApplication().runWriteAction(() -> {
             jsonPreviewDocument.setText(sb.toString());
         });
-        CodeFoldingManager.getInstance(ProjectManager.getInstance().getDefaultProject()).updateFoldRegions(editor);
+
+        CodeFoldingManager.getInstance(ProjectManager.getInstance().getDefaultProject())
+                .updateFoldRegions(editor);
+    }
+
+    private int countLeadingSpaces(String line) {
+        int count = 0;
+        while (count < line.length() && line.charAt(count) == ' ') {
+            count++;
+        }
+        return count;
     }
 
     @NotNull
@@ -224,11 +201,6 @@ public class OpenTelemetryToolWindow {
             @NotNull List<Telemetry> telemetries,
             @NotNull List<Telemetry> visibleTelemetries
     ) {
-        telemetryCountPerType.clear();
-        for (Telemetry telemetry : telemetries) {
-            telemetryCountPerType.compute(telemetry.getType(), (telemetryType, count) -> count == null ? 1 : count + 1);
-        }
-        updateTelemetryTypeCounter(null);
         telemetryTableModel.setRows(visibleTelemetries);
     }
 
@@ -249,30 +221,11 @@ public class OpenTelemetryToolWindow {
                 }
             });
         }
-        telemetryCountPerType.compute(telemetry.getType(), (telemetryType, count) -> count == null ? 1 : count + 1);
-        updateTelemetryTypeCounter(telemetry.getType());
     }
 
     private void performAutoScrollToTheEnd() {
         logsTable.scrollRectToVisible(
                 logsTable.getCellRect(telemetryTableModel.getRowCount() - 1, 0, true));
-    }
-
-    private void updateTelemetryTypeCounter(@Nullable TelemetryType type) {
-        for (JLabel counter : telemetryTypesCounter) {
-            TelemetryType telemetryType = (TelemetryType) counter.getClientProperty("TelemetryType");
-            if (type != null && telemetryType != type)
-                continue;
-
-            int count = telemetryCountPerType.computeIfAbsent(telemetryType, (e) -> 0);
-            if (count < 1000) {
-                counter.setText(String.valueOf(count));
-            } else if (count < 1000000) {
-                counter.setText(count / 1000 + "K");
-            } else {
-                counter.setText(count / 1000 + "M");
-            }
-        }
     }
 
     private void createUIComponents() {

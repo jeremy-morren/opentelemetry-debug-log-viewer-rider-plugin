@@ -1,9 +1,7 @@
 package io.github.ozkanpakdil.opentelemetry;
 
-import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
 import com.google.gson.annotations.SerializedName;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -18,7 +16,6 @@ public class TelemetryFactory {
 
     public TelemetryFactory() {
         gson = new GsonBuilder()
-//                .setFieldNamingPolicy(FieldNamingPolicy.UPPER_CAMEL_CASE)
                 .create();
     }
 
@@ -26,7 +23,7 @@ public class TelemetryFactory {
     public Telemetry fromJson(@NotNull String json) {
         ActivityOutput wrapper = gson.fromJson(json, ActivityOutput.class);
         ActivityInfo activity = wrapper.getActivity();
-        return new Telemetry(TelemetryType.Unk, json, activity, activity.getTags());
+        return new Telemetry(json, activity);
     }
 
     @Nullable
