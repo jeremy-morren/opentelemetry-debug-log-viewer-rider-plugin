@@ -15,7 +15,7 @@ public class TelemetryTableModel extends AbstractTableModel {
     private final Class<?>[] columnClass = new Class[]{
             Date.class, TelemetryType.class, TimeSpan.class, Telemetry.class
     };
-    private List<Telemetry> telemetries;
+    private final List<Telemetry> telemetries;
 
     public TelemetryTableModel() {
         this.telemetries = new ArrayList<>();

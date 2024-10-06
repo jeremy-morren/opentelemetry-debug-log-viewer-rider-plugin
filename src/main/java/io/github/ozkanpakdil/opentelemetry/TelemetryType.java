@@ -10,7 +10,7 @@ public enum TelemetryType {
     Duration("Duration", "duration"),
     Unk();
 
-    private String[] typeNames;
+    private final String[] typeNames;
 
     TelemetryType(@Nullable String... typeNames) {
         this.typeNames = typeNames;

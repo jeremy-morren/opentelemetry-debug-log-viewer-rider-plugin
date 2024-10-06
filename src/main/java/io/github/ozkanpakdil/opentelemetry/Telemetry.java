@@ -1,6 +1,5 @@
 package io.github.ozkanpakdil.opentelemetry;
 
-import com.google.gson.JsonObject;
 import io.github.ozkanpakdil.opentelemetry.metricdata.ITelemetryData;
 import io.github.ozkanpakdil.opentelemetry.metricdata.RequestData;
 import io.github.ozkanpakdil.opentelemetry.utils.TimeSpan;
@@ -22,8 +21,6 @@ public class Telemetry {
     @Nullable
     private String lowerCaseJson;
     @NotNull
-    private final JsonObject jsonObject;
-    @NotNull
     private final Date timestamp;
     private final TelemetryFactory.ActivityInfo data;
     private final Map<String, String> tags;
@@ -34,13 +31,11 @@ public class Telemetry {
     public Telemetry(
             @NotNull TelemetryType type,
             @NotNull String json,
-            @NotNull JsonObject jsonObject,
             TelemetryFactory.ActivityInfo data,
             Map<String, String> tags
     ) {
         this.type = type;
         this.json = json;
-        this.jsonObject = jsonObject;
         this.data = data;
         this.tags = tags;
         TemporalAccessor ta = DateTimeFormatter.ISO_INSTANT.parse(data.getStartTime());
@@ -59,11 +54,6 @@ public class Telemetry {
     }
 
     @NotNull
-    public JsonObject getJsonObject() {
-        return jsonObject;
-    }
-
-    @NotNull
     public String getJson() {
         return json;
     }
@@ -77,6 +67,10 @@ public class Telemetry {
 
     public <T extends ITelemetryData> T getData(Class<T> clazz) {
         return (T) data;
+    }
+
+    public TelemetryFactory.ActivityInfo getData() {
+        return data;
     }
 
     public void setFilteredBy(@Nullable String filteredBy) {
@@ -106,5 +100,10 @@ public class Telemetry {
             return new TimeSpan(requestData.duration);
         }
         return TimeSpan.Zero;
+    }
+
+    @Override
+    public String toString() {
+        return data.getDisplayName() + data.getTags().getOrDefault("url.path", "");
     }
 }

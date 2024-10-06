@@ -21,7 +21,6 @@ public class OpenTelemetrySessionManager {
     private OpenTelemetrySessionManager() {
     }
 
-    @Nullable
     public void startSession(XDebugProcess debugProcess) {
         if (!(debugProcess instanceof DotNetDebugProcess))
             return;

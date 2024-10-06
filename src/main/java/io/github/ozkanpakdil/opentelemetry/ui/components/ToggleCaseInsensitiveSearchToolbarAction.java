@@ -1,6 +1,7 @@
 package io.github.ozkanpakdil.opentelemetry.ui.components;
 
 import com.intellij.icons.AllIcons;
+import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.ToggleAction;
 import io.github.ozkanpakdil.opentelemetry.OpentelemetryBundle;
@@ -12,7 +13,7 @@ public class ToggleCaseInsensitiveSearchToolbarAction extends ToggleAction {
     public ToggleCaseInsensitiveSearchToolbarAction() {
         super();
 
-        String message = OpentelemetryBundle.message("action.opentelemetryaction.ToggleCaseInsensitive.text");
+        String message = OpentelemetryBundle.message("ToggleCaseInsensitive.text");
         this.getTemplatePresentation().setDescription(message);
         this.getTemplatePresentation().setText(message);
         this.getTemplatePresentation().setIcon(AllIcons.Actions.MatchCase);
@@ -25,5 +26,10 @@ public class ToggleCaseInsensitiveSearchToolbarAction extends ToggleAction {
 
     public void setSelected(@NotNull AnActionEvent actionEvent, boolean state) {
         AppSettingState.getInstance().caseInsensitiveSearch.setValue(state);
+    }
+
+    @Override
+    public @NotNull ActionUpdateThread getActionUpdateThread() {
+        return ActionUpdateThread.EDT;
     }
 }

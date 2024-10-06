@@ -14,7 +14,7 @@ public class OpenSettingsToolbarAction extends AnAction {
     public OpenSettingsToolbarAction() {
         super();
 
-        String message = OpentelemetryBundle.message("action.opentelemetryaction.ShowSettings");
+        String message = OpentelemetryBundle.message("ShowSettings");
         this.getTemplatePresentation().setText(message);
         this.getTemplatePresentation().setIcon(AllIcons.General.Gear);
     }

@@ -9,7 +9,8 @@ import java.awt.*;
 public class TelemetryRenderBase extends JLabel implements TableCellRenderer {
 
     @Override
-    public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+    public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row,
+            int column) {
         super.setOpaque(true);
         if (isSelected) {
             super.setBackground(JBColor.namedColor("Table.selectionBackground", JBColor.blue));

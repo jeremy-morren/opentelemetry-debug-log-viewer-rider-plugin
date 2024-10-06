@@ -39,9 +39,6 @@
 
     <actions>
         <!-- Add your actions here -->
-        <!--<action id="io.github.ozkanpakdil.opentelemetry.ui.components.AutoScrollToTheEndToolbarAction"
-                class="io.github.ozkanpakdil.opentelemetry.ui.components.AutoScrollToTheEndToolbarAction"
-                text="AutoScrollToTheEndToolbarAction"/>-->
     </actions>
 
     <projectListeners>

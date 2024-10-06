@@ -26,9 +26,9 @@ public class TelemetryFactory {
     public Telemetry fromJson(@NotNull String json) {
         ActivityOutput wrapper = gson.fromJson(json, ActivityOutput.class);
         ActivityInfo activity = wrapper.getActivity();
-        TelemetryType type1 = TelemetryType.fromType(activity.getDisplayName());
+        TelemetryType type = TelemetryType.fromType(activity.getDisplayName());
 
-        return new Telemetry(type1, json, gson.fromJson(json, JsonObject.class), activity, activity.getTags());
+        return new Telemetry(type, json, activity, activity.getTags());
     }
 
     @Nullable

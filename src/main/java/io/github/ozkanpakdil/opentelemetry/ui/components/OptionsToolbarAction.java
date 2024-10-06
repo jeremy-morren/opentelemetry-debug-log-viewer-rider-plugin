@@ -10,13 +10,13 @@ import java.awt.*;
 import java.util.function.Supplier;
 
 public class OptionsToolbarAction extends AnAction {
-    private Supplier<Component> toolbarComponent;
+    private final Supplier<Component> toolbarComponent;
 
     public OptionsToolbarAction(Supplier<Component> toolbarComponent) {
         super();
         this.toolbarComponent = toolbarComponent;
 
-        String message = OpentelemetryBundle.message("action.opentelemetryaction.ShowOptionsMenu");
+        String message = OpentelemetryBundle.message("ShowOptionsMenu");
         this.getTemplatePresentation().setDescription(message);
         this.getTemplatePresentation().setText(message);
         this.getTemplatePresentation().setIcon(AllIcons.General.Gear);

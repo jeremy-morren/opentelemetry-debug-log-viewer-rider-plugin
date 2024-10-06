@@ -1,6 +1,7 @@
 package io.github.ozkanpakdil.opentelemetry.ui.components;
 
 import com.intellij.icons.AllIcons;
+import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.ToggleAction;
 import io.github.ozkanpakdil.opentelemetry.OpentelemetryBundle;
@@ -11,7 +12,7 @@ public class FilterIndicatorToolbarAction extends ToggleAction {
     public FilterIndicatorToolbarAction() {
         super();
 
-        String message = OpentelemetryBundle.message("action.opentelemetryaction.ToggleFilteredIndicator.text");
+        String message = OpentelemetryBundle.message("ToggleFilteredIndicator.text");
         this.getTemplatePresentation().setDescription(message);
         this.getTemplatePresentation().setText(message);
         this.getTemplatePresentation().setIcon(AllIcons.General.Filter);
@@ -24,5 +25,9 @@ public class FilterIndicatorToolbarAction extends ToggleAction {
 
     public void setSelected(@NotNull AnActionEvent actionEvent, boolean state) {
         AppSettingState.getInstance().showFilteredIndicator.setValue(state);
+    }
+    @Override
+    public @NotNull ActionUpdateThread getActionUpdateThread() {
+        return ActionUpdateThread.EDT;
     }
 }

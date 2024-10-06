@@ -4,7 +4,10 @@ import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.ui.JBColor;
 import com.jetbrains.rd.util.lifetime.Lifetime;
 import io.github.ozkanpakdil.opentelemetry.Telemetry;
-import io.github.ozkanpakdil.opentelemetry.metricdata.*;
+import io.github.ozkanpakdil.opentelemetry.metricdata.ExceptionData;
+import io.github.ozkanpakdil.opentelemetry.metricdata.MessageData;
+import io.github.ozkanpakdil.opentelemetry.metricdata.MetricData;
+import io.github.ozkanpakdil.opentelemetry.metricdata.RequestData;
 import io.github.ozkanpakdil.opentelemetry.settings.AppSettingState;
 import kotlin.Unit;
 
@@ -22,7 +25,8 @@ public class TelemetryRender extends TelemetryRenderBase {
     }
 
     @Override
-    public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+    public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row,
+            int column) {
         super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 
         super.setForeground(JBColor.foreground());
@@ -102,6 +106,7 @@ public class TelemetryRender extends TelemetryRenderBase {
 
         return this;
     }
+
     private void colorComponentDependingOnSeverityLevel(String severityLevel, boolean isSelected) {
         if ("Error".equals(severityLevel)) {
             super.setForeground(JBColor.namedColor("SeverityLevel.Error", JBColor.red));
@@ -119,7 +124,8 @@ public class TelemetryRender extends TelemetryRenderBase {
 
     public void setShowFilteredIndicator(boolean showFilteredIndicator) {
         this.showFilteredIndicator = showFilteredIndicator;
-        PropertiesComponent.getInstance().setValue("io.github.ozkanpakdil.opentelemetry.showFilteredIndicator", showFilteredIndicator);
+        PropertiesComponent.getInstance()
+                .setValue("io.github.ozkanpakdil.opentelemetry.showFilteredIndicator", showFilteredIndicator);
     }
 
     public boolean isShowFilteredIndicator() {

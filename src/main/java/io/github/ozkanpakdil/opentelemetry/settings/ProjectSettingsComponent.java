@@ -8,8 +8,6 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
 
 public class ProjectSettingsComponent {
 
@@ -19,9 +17,13 @@ public class ProjectSettingsComponent {
 
     public ProjectSettingsComponent() {
         minPanel = FormBuilder.createFormBuilder()
-                // .addLabeledComponent(new JBLabel("Enter user name: "), myUserNameText, 1, false)
                 .addComponent(caseInsensitiveFiltering, 1)
-                .addComponent(new JBLabel("<html>Hidden logs<br>It will hide all logs matching the given text, based on the JSON of the telemetry message.<br>You can find the json used to match a log in the Debug Output tab (while debugging)<br>One filter per line</html>"), 1)
+                .addComponent(new JBLabel(
+                                "<html>Hidden logs<br>It will hide all logs matching the given text," +
+                                        " based on the JSON of the telemetry message.<br>You can find the json used " +
+                                        "to match a log in the Debug Output tab (while debugging)<br>One filter " +
+                                        "per line</html>"),
+                        1)
                 .addComponentFillVertically(filteredLogs, 0)
                 .addComponentFillVertically(new JPanel(), 0)
                 .getPanel();

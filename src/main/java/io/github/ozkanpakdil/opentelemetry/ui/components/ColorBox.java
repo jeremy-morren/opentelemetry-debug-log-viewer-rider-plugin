@@ -1,16 +1,10 @@
 package io.github.ozkanpakdil.opentelemetry.ui.components;
 
-import com.intellij.ui.JBColor;
-
 import javax.swing.*;
 import java.awt.*;
 
 public class ColorBox extends JPanel {
-    private Color color;
-
-    public ColorBox() {
-        this(JBColor.blue);
-    }
+    private final Color color;
 
     public ColorBox(Color color) {
         this.color = color;

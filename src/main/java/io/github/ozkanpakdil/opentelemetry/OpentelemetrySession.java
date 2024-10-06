@@ -25,7 +25,7 @@ import java.util.stream.Stream;
 
 public class OpentelemetrySession {
     @NotNull
-    private static final Icon appInsightsIcon = IconLoader.getIcon("/icons/pluginIcon.svg", OpentelemetrySession.class);
+    private static final Icon ICON = IconLoader.getIcon("/icons/pluginIcon.svg", OpentelemetrySession.class);
     @NotNull
     private final TelemetryFactory telemetryFactory;
     @NotNull
@@ -125,7 +125,7 @@ public class OpentelemetrySession {
                     "opentelemetry",
                     openTelemetryToolWindow.getContent(),
                     "Opentelemetry",
-                    appInsightsIcon,
+                    ICON,
                     null
             );
             dotNetDebugProcess.getSession().getUI().addContent(content);

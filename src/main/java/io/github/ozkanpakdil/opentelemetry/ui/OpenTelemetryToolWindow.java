@@ -38,7 +38,6 @@ import io.github.ozkanpakdil.opentelemetry.Telemetry;
 import io.github.ozkanpakdil.opentelemetry.TelemetryType;
 import io.github.ozkanpakdil.opentelemetry.metricdata.ExceptionData;
 import io.github.ozkanpakdil.opentelemetry.metricdata.ITelemetryData;
-import io.github.ozkanpakdil.opentelemetry.metricdata.MessageData;
 import io.github.ozkanpakdil.opentelemetry.metricdata.MetricData;
 import io.github.ozkanpakdil.opentelemetry.metricdata.RequestData;
 import io.github.ozkanpakdil.opentelemetry.settings.AppSettingState;
@@ -72,7 +71,7 @@ public class OpenTelemetryToolWindow {
     @NotNull
     private JPanel mainPanel;
     @NotNull
-    private JBTable appInsightsLogsTable;
+    private JBTable logsTable;
     @NotNull
     private JCheckBox metricCheckBox;
     @NotNull
@@ -141,13 +140,15 @@ public class OpenTelemetryToolWindow {
     @NotNull
     private Editor editor;
     @NotNull
-    private TelemetryTableModel telemetryTableModel;
+    private final TelemetryTableModel telemetryTableModel;
     @NotNull
-    private ArrayList<JLabel> telemetryTypesCounter = new ArrayList<>();
+    private final ArrayList<JLabel> telemetryTypesCounter = new ArrayList<>();
     @NotNull
     private Document jsonPreviewDocument;
     private boolean autoScrollToTheEnd;
     private final TextConsoleBuilder builder;
+    Gson gson = new GsonBuilder().setPrettyPrinting().create();
+
 
     public OpenTelemetryToolWindow(
             @NotNull OpentelemetrySession opentelemetrySession,
@@ -173,20 +174,20 @@ public class OpenTelemetryToolWindow {
         }
 
         this.telemetryRender = new TelemetryRender(lifetime);
-        appInsightsLogsTable.setDefaultRenderer(Telemetry.class, telemetryRender);
-        appInsightsLogsTable.setDefaultRenderer(TelemetryType.class, new TelemetryTypeRender());
-        appInsightsLogsTable.setDefaultRenderer(Date.class, new TelemetryDateRender());
-        appInsightsLogsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        logsTable.setDefaultRenderer(Telemetry.class, telemetryRender);
+        logsTable.setDefaultRenderer(TelemetryType.class, new TelemetryTypeRender());
+        logsTable.setDefaultRenderer(Date.class, new TelemetryDateRender());
+        logsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
         telemetryTableModel = new TelemetryTableModel();
-        appInsightsLogsTable.setModel(telemetryTableModel);
-        appInsightsLogsTable.getColumnModel().getColumn(0).setPreferredWidth(90);
-        appInsightsLogsTable.getColumnModel().getColumn(0).setMaxWidth(130);
-        appInsightsLogsTable.getColumnModel().getColumn(1).setPreferredWidth(100);
-        appInsightsLogsTable.getColumnModel().getColumn(1).setMaxWidth(100);
-        appInsightsLogsTable.getColumnModel().getColumn(2).setPreferredWidth(100);
-        appInsightsLogsTable.getColumnModel().getColumn(2).setMaxWidth(100);
-        appInsightsLogsTable.getTableHeader().setUI(null);
+        logsTable.setModel(telemetryTableModel);
+        logsTable.getColumnModel().getColumn(0).setPreferredWidth(90);
+        logsTable.getColumnModel().getColumn(0).setMaxWidth(130);
+        logsTable.getColumnModel().getColumn(1).setPreferredWidth(100);
+        logsTable.getColumnModel().getColumn(1).setMaxWidth(100);
+        logsTable.getColumnModel().getColumn(2).setPreferredWidth(100);
+        logsTable.getColumnModel().getColumn(2).setMaxWidth(100);
+        logsTable.getTableHeader().setUI(null);
 
         filter.setExtensions(new ClearTextFieldExtension(filter));
 
@@ -206,23 +207,22 @@ public class OpenTelemetryToolWindow {
             }
         });
 
-        appInsightsLogsTable.getSelectionModel().addListSelectionListener(e -> {
-            selectTelemetry(telemetryTableModel.getRow(appInsightsLogsTable.getSelectedRow()));
+        logsTable.getSelectionModel().addListSelectionListener(e -> {
+            selectTelemetry(telemetryTableModel.getRow(logsTable.getSelectedRow()));
         });
 
         builder = TextConsoleBuilderFactory.getInstance().createBuilder(project);
         builder.filters(AnalyzeStacktraceUtil.EP_NAME.getExtensions(project));
 
         AppSettingState.getInstance().showFilteredIndicator.advise(lifetime, (v) -> {
-            this.appInsightsLogsTable.invalidate();
-            this.appInsightsLogsTable.repaint();
+            this.logsTable.invalidate();
+            this.logsTable.repaint();
             return Unit.INSTANCE;
         });
     }
 
     private void selectTelemetry(@Nullable Telemetry telemetry) {
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        updateJsonPreview(gson.toJson(telemetry == null ? "" : telemetry.getJsonObject()));
+        updateJsonPreview(gson.toJson(telemetry == null ? "" : telemetry.getData()));
 
         if (telemetry == null) {
             return;
@@ -235,11 +235,11 @@ public class OpenTelemetryToolWindow {
         }
 
         int column = 1;
-        if (telemetry.getType() == TelemetryType.Message) {
+        /*if (telemetry.getType() == TelemetryType.Message) {
             formattedTelemetryInfo.add(createTitleLabel("Message"), createConstraint(0, column++, 0));
             MessageData messageData = telemetry.getData(MessageData.class);
             formattedTelemetryInfo.add(new JLabel(messageData.message), createConstraint(0, column++, 30));
-        }
+        }*/
         if (telemetry.getType() == TelemetryType.Request) {
             formattedTelemetryInfo.add(createTitleLabel("Request"), createConstraint(0, column++, 0));
             RequestData requestData = telemetry.getData(RequestData.class);
@@ -365,11 +365,7 @@ public class OpenTelemetryToolWindow {
             if (telemetryType != null) {
                 checkBox.setSelected(opentelemetrySession.isTelemetryVisible(telemetryType));
                 checkBox.addItemListener(e -> {
-                    if (e.getStateChange() == ItemEvent.SELECTED) {
-                        opentelemetrySession.setTelemetryFiltered(telemetryType, false);
-                    } else {
-                        opentelemetrySession.setTelemetryFiltered(telemetryType, true);
-                    }
+                    opentelemetrySession.setTelemetryFiltered(telemetryType, e.getStateChange() != ItemEvent.SELECTED);
                 });
             }
         }
@@ -414,8 +410,8 @@ public class OpenTelemetryToolWindow {
     }
 
     private void performAutoScrollToTheEnd() {
-        appInsightsLogsTable.scrollRectToVisible(
-                appInsightsLogsTable.getCellRect(telemetryTableModel.getRowCount() - 1, 0, true));
+        logsTable.scrollRectToVisible(
+                logsTable.getCellRect(telemetryTableModel.getRowCount() - 1, 0, true));
     }
 
     private void updateTelemetryTypeCounter(@Nullable TelemetryType type) {
