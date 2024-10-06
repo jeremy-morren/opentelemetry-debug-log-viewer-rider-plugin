@@ -28,13 +28,13 @@ jobs:
         run: ./gradlew :buildPlugin -PbuildType=stable
 
       - name: Upload artifact
-        uses: actions/upload-artifact
+        uses: actions/upload-artifact@v4
         with:
           name: "Opentelemetry-Debug-Log-Viewer-$VERSION.zip"
           path: "Opentelemetry-Debug-Log-Viewer-$VERSION.zip"
 
       - name: Release with Notes
-        uses: softprops/action-gh-release
+        uses: softprops/action-gh-release@v1
         with:
           files: |
             ./build/distributions/Opentelemetry-Debug-Log-Viewer-$VERSION.zip
