@@ -1,7 +1,6 @@
 package io.github.ozkanpakdil.opentelemetry;
 
 import io.github.ozkanpakdil.opentelemetry.metricdata.ITelemetryData;
-import io.github.ozkanpakdil.opentelemetry.metricdata.RequestData;
 import io.github.ozkanpakdil.opentelemetry.utils.TimeSpan;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -95,11 +94,7 @@ public class Telemetry {
     }
 
     public TimeSpan getDuration() {
-        if (getType() == TelemetryType.Request) {
-            RequestData requestData = getData(RequestData.class);
-            return new TimeSpan(requestData.duration);
-        }
-        return TimeSpan.Zero;
+        return new TimeSpan(data.getDuration());
     }
 
     @Override

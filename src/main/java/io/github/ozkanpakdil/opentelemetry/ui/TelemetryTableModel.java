@@ -10,10 +10,10 @@ import java.util.*;
 
 public class TelemetryTableModel extends AbstractTableModel {
     private final String[] columnNames = new String[]{
-            "timestamp", "type", "duration", "data"
+            "timestamp", "duration", "data"
     };
     private final Class<?>[] columnClass = new Class[]{
-            Date.class, TelemetryType.class, TimeSpan.class, Telemetry.class
+            Date.class, TimeSpan.class, Telemetry.class
     };
     private final List<Telemetry> telemetries;
 
@@ -44,24 +44,12 @@ public class TelemetryTableModel extends AbstractTableModel {
     @Override
     public Object getValueAt(int rowIndex, int columnIndex) {
         Telemetry telemetry = telemetries.get(rowIndex);
-        switch (columnIndex) {
-            case 0:
-                return telemetry.getTimestamp();
-            case 1:
-                return telemetry.getType();
-            case 2:
-                return telemetry.getDuration();
-            case 3:
-                return telemetry;
-            default:
-                return null;
-        }
-    }
-
-    public void clear() {
-        int size = this.telemetries.size();
-        this.telemetries.clear();
-        this.fireTableRowsDeleted(0, size - 1);
+        return switch (columnIndex) {
+            case 0 -> telemetry.getTimestamp();
+            case 1 -> telemetry.getDuration();
+            case 2 -> telemetry;
+            default -> null;
+        };
     }
 
     public void addRow(Telemetry telemetry) {

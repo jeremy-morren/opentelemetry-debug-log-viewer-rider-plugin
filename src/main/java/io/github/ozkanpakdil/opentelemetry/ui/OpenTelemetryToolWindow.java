@@ -5,7 +5,6 @@ import com.google.gson.GsonBuilder;
 import com.intellij.codeInsight.folding.CodeFoldingManager;
 import com.intellij.execution.filters.TextConsoleBuilder;
 import com.intellij.execution.filters.TextConsoleBuilderFactory;
-import com.intellij.execution.ui.ConsoleViewContentType;
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.json.JsonFileType;
 import com.intellij.json.JsonLanguage;
@@ -36,10 +35,6 @@ import com.jetbrains.rd.util.lifetime.Lifetime;
 import io.github.ozkanpakdil.opentelemetry.OpentelemetrySession;
 import io.github.ozkanpakdil.opentelemetry.Telemetry;
 import io.github.ozkanpakdil.opentelemetry.TelemetryType;
-import io.github.ozkanpakdil.opentelemetry.metricdata.ExceptionData;
-import io.github.ozkanpakdil.opentelemetry.metricdata.ITelemetryData;
-import io.github.ozkanpakdil.opentelemetry.metricdata.MetricData;
-import io.github.ozkanpakdil.opentelemetry.metricdata.RequestData;
 import io.github.ozkanpakdil.opentelemetry.settings.AppSettingState;
 import io.github.ozkanpakdil.opentelemetry.ui.components.AutoScrollToTheEndToolbarAction;
 import io.github.ozkanpakdil.opentelemetry.ui.components.ClearApplicationInsightsLogToolbarAction;
@@ -49,19 +44,15 @@ import io.github.ozkanpakdil.opentelemetry.ui.components.ToggleCaseInsensitiveSe
 import io.github.ozkanpakdil.opentelemetry.ui.renderers.TelemetryDateRender;
 import io.github.ozkanpakdil.opentelemetry.ui.renderers.TelemetryRender;
 import io.github.ozkanpakdil.opentelemetry.ui.renderers.TelemetryTypeRender;
-import io.github.ozkanpakdil.opentelemetry.utils.TimeSpan;
 import kotlin.Unit;
-import org.apache.velocity.runtime.directive.contrib.For;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ItemEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -74,49 +65,7 @@ public class OpenTelemetryToolWindow {
     @NotNull
     private JBTable logsTable;
     @NotNull
-    private JCheckBox metricCheckBox;
-    @NotNull
-    private JCheckBox exceptionCheckBox;
-    @NotNull
-    private JCheckBox messageCheckBox;
-    @NotNull
-    private JCheckBox dependencyCheckBox;
-    @NotNull
-    private JCheckBox requestCheckBox;
-    @NotNull
-    private JCheckBox eventCheckBox;
-    @NotNull
-    private JCheckBox pageViewCheckBox;
-    @NotNull
     private JSplitPane splitPane;
-    @NotNull
-    private JLabel metricCounter;
-    @NotNull
-    private JLabel exceptionCounter;
-    @NotNull
-    private JLabel messageCounter;
-    @NotNull
-    private JLabel dependencyCounter;
-    @NotNull
-    private JLabel requestCounter;
-    @NotNull
-    private JLabel eventCounter;
-    @NotNull
-    private JLabel pageViewCounter;
-    @NotNull
-    private ColorBox metricColorBox;
-    @NotNull
-    private ColorBox exceptionColorBox;
-    @NotNull
-    private ColorBox messageColorBox;
-    @NotNull
-    private ColorBox dependencyColorBox;
-    @NotNull
-    private ColorBox requestColorBox;
-    @NotNull
-    private ColorBox eventColorBox;
-    @NotNull
-    private ColorBox pageViewColorBox;
     @NotNull
     private ExtendableTextField filter;
     @NotNull
@@ -125,7 +74,6 @@ public class OpenTelemetryToolWindow {
     private ActionToolbarImpl toolbar;
     @NotNull
     private JComponent editorPanel;
-    private JPanel formattedTelemetryInfo;
 
     @NotNull
     private final Project project;
@@ -157,8 +105,6 @@ public class OpenTelemetryToolWindow {
         this.opentelemetrySession = opentelemetrySession;
         this.lifetime = lifetime;
 
-        initTelemetryTypeFilters();
-
         splitPane.setDividerLocation(0.5);
         splitPane.setResizeWeight(0.5);
         try {
@@ -182,10 +128,8 @@ public class OpenTelemetryToolWindow {
         logsTable.setModel(telemetryTableModel);
         logsTable.getColumnModel().getColumn(0).setPreferredWidth(90);
         logsTable.getColumnModel().getColumn(0).setMaxWidth(130);
-        logsTable.getColumnModel().getColumn(1).setPreferredWidth(100);
-        logsTable.getColumnModel().getColumn(1).setMaxWidth(100);
-        logsTable.getColumnModel().getColumn(2).setPreferredWidth(100);
-        logsTable.getColumnModel().getColumn(2).setMaxWidth(100);
+        logsTable.getColumnModel().getColumn(1).setPreferredWidth(90);
+        logsTable.getColumnModel().getColumn(1).setMaxWidth(130);
         logsTable.getTableHeader().setUI(null);
 
         filter.setExtensions(new ClearTextFieldExtension(filter));
@@ -223,79 +167,6 @@ public class OpenTelemetryToolWindow {
     private void selectTelemetry(@Nullable Telemetry telemetry) {
         updateJsonPreview(gson.toJson(telemetry == null ? "" : telemetry.getData()));
 
-        if (telemetry == null) {
-            return;
-        }
-
-        formattedTelemetryInfo.setVisible(false);
-//        formattedTelemetryInfo.removeAll();
-        if (telemetry.getFilteredBy() != null) {
-            formattedTelemetryInfo.add(new JLabel("This log was filtered by " + telemetry.getFilteredBy()),
-                    createConstraint(0, 0, 0));
-        }
-
-        int column = 1;
-        /*if (telemetry.getType() == TelemetryType.Message) {
-            formattedTelemetryInfo.add(createTitleLabel("Message"), createConstraint(0, column++, 0));
-            MessageData messageData = telemetry.getData(MessageData.class);
-            formattedTelemetryInfo.add(new JLabel(messageData.message), createConstraint(0, column++, 30));
-        }*/
-        if (telemetry.getType() == TelemetryType.Request) {
-            formattedTelemetryInfo.add(createTitleLabel("Request"), createConstraint(0, column++, 0));
-            RequestData requestData = telemetry.getData(RequestData.class);
-            formattedTelemetryInfo.add(new JLabel(requestData.name), createConstraint(0, column++, 30));
-            formattedTelemetryInfo.add(new JLabel("Status code: " + requestData.responseCode),
-                    createConstraint(0, column++, 30));
-            formattedTelemetryInfo.add(new JLabel("Duration: " + new TimeSpan(requestData.duration).toString()),
-                    createConstraint(0, column++, 30));
-        }
-        if (telemetry.getType() == TelemetryType.Duration) {
-            formattedTelemetryInfo.add(createTitleLabel("Metric"), createConstraint(0, column++, 0));
-            MetricData metricData = telemetry.getData(MetricData.class);
-            if (metricData.metrics != null) {
-                for (MetricData.Metric metric : metricData.metrics) {
-                    formattedTelemetryInfo.add(new JLabel(metric.name), createConstraint(0, column++, 30));
-                    formattedTelemetryInfo.add(new JLabel("Kind: " + metric.kind), createConstraint(0, column++, 60));
-                    formattedTelemetryInfo.add(new JLabel("Value: " + metric.value), createConstraint(0, column++, 60));
-                    formattedTelemetryInfo.add(new JLabel("Count: " + metric.count), createConstraint(0, column++, 60));
-                }
-            }
-        }
-        if (telemetry.getType() == TelemetryType.Exception) {
-            formattedTelemetryInfo.add(createTitleLabel("Exception"), createConstraint(0, column++, 0));
-            ExceptionData exceptionData = telemetry.getData(ExceptionData.class);
-            var consoleView = builder.getConsole();
-            consoleView.clear();
-            consoleView.allowHeavyFilters();
-            for (ExceptionData.ExceptionDetailData exception : exceptionData.exceptions) {
-                consoleView.print(StackTraceFormatter.formatStackTrace(exception), ConsoleViewContentType.NORMAL_OUTPUT);
-                formattedTelemetryInfo.add(consoleView.getComponent(), createConstraint(0, column++, 30));
-            }
-        }
-
-        /*ITelemetryData telemetryData = telemetry.getData(ITelemetryData.class);
-        if (telemetryData != null && telemetryData.getProperties() != null && !telemetryData.getProperties().isEmpty()) {
-            formattedTelemetryInfo.add(createTitleLabel("Properties"), createConstraint(0, column++, 0));
-            for (Map.Entry<String, String> entry : telemetryData.getProperties().entrySet()) {
-                JLabel jLabel = new JLabel("<html>" + entry.getKey() + ": " + "<a href=''>" + entry.getValue() + "</a></html>");
-                jLabel.setCursor(new Cursor(Cursor.HAND_CURSOR));
-                jLabel.addMouseListener(new ClickListener(e -> {
-                    opentelemetrySession.updateFilter(entry.getValue());
-                    this.filter.setText(entry.getValue());
-                }));
-                formattedTelemetryInfo.add(jLabel, createConstraint(0, column++, 30));
-            }
-        }*/
-
-        // Padding
-        {
-            GridBagConstraints c = createConstraint(0, 10_000, 0);
-            c.weighty = 1;
-            formattedTelemetryInfo.add(new JPanel(), c);
-        }
-
-        formattedTelemetryInfo.revalidate();
-        formattedTelemetryInfo.repaint();
     }
 
     @NotNull
@@ -342,33 +213,6 @@ public class OpenTelemetryToolWindow {
             jsonPreviewDocument.setText(sb.toString());
         });
         CodeFoldingManager.getInstance(ProjectManager.getInstance().getDefaultProject()).updateFoldRegions(editor);
-    }
-
-    private void initTelemetryTypeFilters() {
-        metricCounter.putClientProperty("TelemetryType", TelemetryType.Duration);
-        exceptionCounter.putClientProperty("TelemetryType", TelemetryType.Exception);
-        messageCounter.putClientProperty("TelemetryType", TelemetryType.Message);
-        requestCounter.putClientProperty("TelemetryType", TelemetryType.Request);
-
-        telemetryTypesCounter.addAll(
-                Arrays.asList(metricCounter, exceptionCounter, messageCounter, dependencyCounter, requestCounter, eventCounter,
-                        pageViewCounter));
-
-        metricCheckBox.putClientProperty("TelemetryType", TelemetryType.Duration);
-        exceptionCheckBox.putClientProperty("TelemetryType", TelemetryType.Exception);
-        messageCheckBox.putClientProperty("TelemetryType", TelemetryType.Message);
-        requestCheckBox.putClientProperty("TelemetryType", TelemetryType.Request);
-
-        for (JCheckBox checkBox : new JCheckBox[] { metricCheckBox, exceptionCheckBox, messageCheckBox, dependencyCheckBox,
-                requestCheckBox, eventCheckBox, pageViewCheckBox }) {
-            TelemetryType telemetryType = (TelemetryType) checkBox.getClientProperty("TelemetryType");
-            if (telemetryType != null) {
-                checkBox.setSelected(opentelemetrySession.isTelemetryVisible(telemetryType));
-                checkBox.addItemListener(e -> {
-                    opentelemetrySession.setTelemetryFiltered(telemetryType, e.getStateChange() != ItemEvent.SELECTED);
-                });
-            }
-        }
     }
 
     @NotNull
@@ -432,15 +276,6 @@ public class OpenTelemetryToolWindow {
     }
 
     private void createUIComponents() {
-        metricColorBox = new ColorBox(JBColor.namedColor("TelemetryColor.Metric", JBColor.gray));
-        exceptionColorBox = new ColorBox(JBColor.namedColor("TelemetryColor.Exception", JBColor.red));
-        messageColorBox = new ColorBox(JBColor.namedColor("TelemetryColor.Message", JBColor.orange));
-        dependencyColorBox = new ColorBox(
-                JBColor.namedColor("TelemetryColor.RemoteDependency", JBColor.blue));
-        requestColorBox = new ColorBox(JBColor.namedColor("TelemetryColor.Request", JBColor.green));
-        eventColorBox = new ColorBox(JBColor.namedColor("TelemetryColor.CustomEvents", JBColor.cyan));
-        pageViewColorBox = new ColorBox(JBColor.namedColor("TelemetryColor.PageView", JBColor.yellow));
-
         toolbar = createToolbar();
         toolbar.setTargetComponent(mainPanel);
         toolbar.setVisible(false);
