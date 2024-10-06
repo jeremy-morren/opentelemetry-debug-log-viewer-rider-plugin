@@ -51,6 +51,7 @@ import io.github.ozkanpakdil.opentelemetry.ui.renderers.TelemetryRender;
 import io.github.ozkanpakdil.opentelemetry.ui.renderers.TelemetryTypeRender;
 import io.github.ozkanpakdil.opentelemetry.utils.TimeSpan;
 import kotlin.Unit;
+import org.apache.velocity.runtime.directive.contrib.For;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -124,7 +125,6 @@ public class OpenTelemetryToolWindow {
     private ActionToolbarImpl toolbar;
     @NotNull
     private JComponent editorPanel;
-    @NotNull
     private JPanel formattedTelemetryInfo;
 
     @NotNull
@@ -148,7 +148,6 @@ public class OpenTelemetryToolWindow {
     private boolean autoScrollToTheEnd;
     private final TextConsoleBuilder builder;
     Gson gson = new GsonBuilder().setPrettyPrinting().create();
-
 
     public OpenTelemetryToolWindow(
             @NotNull OpentelemetrySession opentelemetrySession,
@@ -228,7 +227,8 @@ public class OpenTelemetryToolWindow {
             return;
         }
 
-        formattedTelemetryInfo.removeAll();
+        formattedTelemetryInfo.setVisible(false);
+//        formattedTelemetryInfo.removeAll();
         if (telemetry.getFilteredBy() != null) {
             formattedTelemetryInfo.add(new JLabel("This log was filtered by " + telemetry.getFilteredBy()),
                     createConstraint(0, 0, 0));
@@ -273,7 +273,7 @@ public class OpenTelemetryToolWindow {
             }
         }
 
-        ITelemetryData telemetryData = telemetry.getData(ITelemetryData.class);
+        /*ITelemetryData telemetryData = telemetry.getData(ITelemetryData.class);
         if (telemetryData != null && telemetryData.getProperties() != null && !telemetryData.getProperties().isEmpty()) {
             formattedTelemetryInfo.add(createTitleLabel("Properties"), createConstraint(0, column++, 0));
             for (Map.Entry<String, String> entry : telemetryData.getProperties().entrySet()) {
@@ -285,7 +285,7 @@ public class OpenTelemetryToolWindow {
                 }));
                 formattedTelemetryInfo.add(jLabel, createConstraint(0, column++, 30));
             }
-        }
+        }*/
 
         // Padding
         {
@@ -443,6 +443,7 @@ public class OpenTelemetryToolWindow {
 
         toolbar = createToolbar();
         toolbar.setTargetComponent(mainPanel);
+        toolbar.setVisible(false);
 
         jsonPreviewDocument = new LanguageTextField.SimpleDocumentCreator().createDocument("", JsonLanguage.INSTANCE, project);
         editor = EditorFactory.getInstance().createViewer(jsonPreviewDocument, project, EditorKind.MAIN_EDITOR);
