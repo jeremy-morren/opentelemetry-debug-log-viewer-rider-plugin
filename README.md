@@ -1,18 +1,23 @@
-# Opentelemetry Debug Log Viewer
+# Opentelemetry Debug Log Viewer For Rider
 
 <!-- Plugin description -->
-This plugin allow you to see, instantly, in a nice way [Honeycomb.io](https://www.honeycomb.io/)
+This plugin allow you to see, instantly view, opentelemetry logs, in a nice way, you can use below list for the backend
 
-To use just start a debug session with a program using Honeycomb.io.
+- [Honeycomb.io](https://www.honeycomb.io/)
+
+To use just start a debug session with a program.
 The logs will appear in a new tab in the debugger session.
 <!-- Plugin description end -->
 
-minimum debug log reqired and here is example for dependecies
+You can enable opentelemetry debug logs with below dependency in your dotnet project
 
+https://www.nuget.org/packages/Ozkanpakdil.OpenTelemetry.Exporter.Json.Console
 ```xml
+
 <ItemGroup>
-    <PackageReference Include="Ozkanpakdil.OpenTelemetry.Exporter.Json.Console" Version="1.0.13" />
+    <PackageReference Include="Ozkanpakdil.OpenTelemetry.Exporter.Json.Console" Version="1.0.13"/>
 ```
+
 ### Dev
 
 To edit and test the plugin, just open this project with [InteliJ IDEA](https://www.jetbrains.com/idea/) and run the plugin with predefined run configuration
