@@ -12,6 +12,8 @@ plugins {
     alias(libs.plugins.gradleJvmWrapper)
     alias(libs.plugins.kotlinJvm)
     id("java")
+
+    kotlin("plugin.serialization") version "2.1.10"
 }
 
 allprojects {
@@ -29,8 +31,8 @@ repositories {
 
 val pluginVersion: String by project
 val riderSdkVersion: String by project
-val untilBuildVersion: String by project
 val buildConfiguration: String by project
+val intellijJsonModuleVersion: String by project
 
 version = pluginVersion
 
@@ -43,11 +45,13 @@ val riderSdkPath by lazy {
 }
 
 dependencies {
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
+
     intellijPlatform {
         rider(riderSdkVersion)
+        plugin("com.intellij.modules.json:$intellijJsonModuleVersion")
+        bundledPlugins("com.intellij.modules.json")
         jetbrainsRuntime()
-        instrumentationTools()
-        testFramework(TestFrameworkType.Platform.Bundled)
     }
     testImplementation(libs.openTest4J)
 }
@@ -68,7 +72,6 @@ sourceSets {
 
 tasks {
     patchPluginXml {
-        untilBuild.set(untilBuildVersion)
         val latestChangelog = try {
             changelog.getUnreleased()
         } catch (_: MissingVersionException) {

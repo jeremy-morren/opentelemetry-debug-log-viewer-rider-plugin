@@ -1,4 +1,4 @@
-rootProject.name = "Opentelemetry-Debug-Log-Viewer"
+rootProject.name = "OpenTelemetry-Debug-Log-Viewer"
 include(":protocol")
 
 pluginManagement {
