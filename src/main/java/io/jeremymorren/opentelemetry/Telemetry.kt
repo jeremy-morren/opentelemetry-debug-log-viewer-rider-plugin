@@ -10,42 +10,16 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonIgnoreUnknownKeys
 import kotlinx.serialization.json.JsonObject
+import java.time.Duration
 import java.time.Instant
 import java.util.*
-
-class TelemetryFactory {
-    public fun tryCreateFromDebugOutputLog(output: String): Telemetry? {
-        val openTelemetryLogPrefix = "{\"activity\":{\"traceId\":\""
-
-        val json = output.trim()
-        if (!json.startsWith(openTelemetryLogPrefix) || !json.endsWith("}")) {
-            return null
-        }
-
-        return try {
-            val telemetry = Json.decodeFromString<TelemetryInfo>(json)
-            return Telemetry(formatJson(json), telemetry)
-        } catch (e: SerializationException) {
-            null
-        }
-    }
-
-    private fun formatJson(json: String): String {
-        val prettyJson = Json {
-            prettyPrint = true
-            prettyPrintIndent = "  "
-        }
-        val obj = Json.decodeFromString<JsonObject>(json)
-        return prettyJson.encodeToString(JsonObject.serializer(), obj)
-    }
-}
 
 data class Telemetry(
     val json: String,
     val telemetry: TelemetryInfo
 )
 {
-    val timestamp: Date? = telemetry.activity.getStartTime()
+    val timestamp: Instant? = telemetry.activity.getStartTime()
 
     val type: TelemetryType? = telemetry.activity.getType()
 
@@ -79,16 +53,14 @@ data class Activity(
     val tags: Map<String, String>? = null,
     val operationName: String? = null,
     val statusCode: ActivityStatusCode? = null,
-    val statusDescription: String? = null
+    val statusDescription: String? = null,
+    val events: List<ActivityEvent>? = null,
 ) {
-
-
-    fun getStartTime(): Date? {
+    fun getStartTime(): Instant? {
         if (startTime == null) {
             return null
         }
-        val instant = Instant.parse(startTime)
-        return Date.from(instant)
+        return Instant.parse(startTime)
     }
 
     fun getElapsed() : TimeSpan? {
@@ -126,7 +98,7 @@ data class Activity(
         return sb.toString();
     }
 
-    public fun getRequestPath(): String? {
+    private fun getRequestPath(): String? {
         if (tags == null) return null;
         val sb = StringBuilder();
         sb.append(tags.getOrDefault("url.path", ""));
@@ -135,17 +107,18 @@ data class Activity(
         return sb.toString();
     }
 
-    public fun getFullUrl(): String? = tags?.getOrDefault("url.full", null);
+    private fun getFullUrl(): String? = tags?.getOrDefault("url.full", null);
 
-    public fun getDbQuery(): String? = (tags?.get("db.query.text") ?: tags?.get("db.statement"))?.replace("\r", "")
+    fun getDbQuery(): String? = (tags?.get("db.query.text") ?: tags?.get("db.statement"))?.replace("\r", "")
 
-    public fun getDbName(): String? = tags?.get("db.name")
+    private fun getDbName(): String? = tags?.get("db.name")
 
-    public fun getResponseStatusCode(): String? = tags?.get("http.response.status_code")
+    private fun getResponseStatusCode(): String? = tags?.get("http.response.status_code")
 
-    public fun getStatus(): String? = statusDescription ?: tags?.get("error.type")
+    fun getStatus(): String? = statusDescription ?: tags?.get("error.type")
 
-    public fun getSubType(): String? {
+    // Get the subtype of the activity (e.g. HTTP, SQL)
+    private fun getSubType(): String? {
         if (activitySourceName == null) {
             return null
         }
@@ -158,13 +131,15 @@ data class Activity(
         return null
     }
 
-    public fun getActivitySource(): String? {
+    // Get the activity source (name and version)
+    fun getActivitySource(): String? {
         if (activitySourceVersion.isNullOrEmpty()) {
             return activitySourceName
         }
         return "$activitySourceName ($activitySourceVersion)"
     }
 
+    // Get the trace IDs in a map
     fun getTraceIds(): Map<String, String> {
         val traceIds = mutableMapOf<String, String>()
         if (rootId != null)
@@ -178,6 +153,22 @@ data class Activity(
         if (activityTraceFlags != null)
             traceIds["Flags"] = activityTraceFlags
         return traceIds
+    }
+
+    // Gets time spent in the database (i.e. until first result is returned)
+    fun getDbQueryTime(): TimeSpan? {
+        if (events == null || getStartTime() == null) {
+            return null
+        }
+        for (event in events) {
+            if (event.name == "received-first-response"
+                && event.getTimestamp() != null
+                && event.getTimestamp()!!.isAfter(getStartTime())) {
+                val duration = Duration.between(getStartTime(), event.getTimestamp())
+                return TimeSpan(duration)
+            }
+        }
+        return null
     }
 
     fun getDetail(): String? {
@@ -204,7 +195,29 @@ data class Activity(
         if (parts.size == 0) {
             return null
         }
-        return parts.joinToString(" - ")
+        val str = parts.joinToString(" - ")
+            .replace("\r", "")
+            .replace("\n", " ");
+        if (str.length > 100) {
+            return str.substring(0, 100) + "..."
+        }
+        return str
+    }
+}
+
+@Serializable
+data class ActivityEvent(
+    val name: String?,
+    val timestamp: String?,
+    val attributes: Map<String, String>?,
+)
+{
+    fun getTimestamp() : Instant?
+    {
+        if (timestamp == null) {
+            return null
+        }
+        return Instant.parse(timestamp)
     }
 }
 

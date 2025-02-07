@@ -15,6 +15,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -179,7 +180,7 @@ public class OpenTelemetrySession {
 
     private static Date getTimestamp(Telemetry telemetry) {
         if (telemetry.getTimestamp() == null)
-            return new Date();
-        return telemetry.getTimestamp();
+            return Date.from(Instant.EPOCH);
+        return Date.from(telemetry.getTimestamp());
     }
 }

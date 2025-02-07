@@ -4,6 +4,7 @@ import io.jeremymorren.opentelemetry.Activity
 import io.jeremymorren.opentelemetry.Telemetry
 import io.jeremymorren.opentelemetry.TelemetryType
 import io.jeremymorren.opentelemetry.utils.TimeSpan
+import java.time.Instant
 import java.util.*
 import javax.swing.table.AbstractTableModel
 import kotlin.math.max
@@ -13,7 +14,7 @@ class TelemetryTableModel : AbstractTableModel() {
         "timestamp", "duration", "type", "detail"
     )
     private val columnClass = arrayOf<Class<*>>(
-        Date::class.java, TimeSpan::class.java, TelemetryType::class.java, Activity::class.java
+        Instant::class.java, TimeSpan::class.java, TelemetryType::class.java, Activity::class.java
     )
 
     private val telemetries: MutableList<Telemetry> = ArrayList()

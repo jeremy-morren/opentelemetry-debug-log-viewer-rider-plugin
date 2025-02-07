@@ -25,6 +25,7 @@ import com.intellij.openapi.editor.highlighter.EditorHighlighterFactory;
 import com.intellij.openapi.editor.impl.softwrap.SoftWrapAppliancePlaces;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
+import com.intellij.ui.JBColor;
 import com.intellij.ui.LanguageTextField;
 import com.intellij.ui.components.fields.ExtendableTextField;
 import com.intellij.ui.table.JBTable;
@@ -37,26 +38,22 @@ import io.jeremymorren.opentelemetry.TelemetryType;
 import io.jeremymorren.opentelemetry.OpenTelemetrySession;
 import io.jeremymorren.opentelemetry.Telemetry;
 import io.jeremymorren.opentelemetry.settings.AppSettingState;
-import io.jeremymorren.opentelemetry.ui.components.AutoScrollToTheEndToolbarAction;
-import io.jeremymorren.opentelemetry.ui.components.ClearApplicationInsightsLogToolbarAction;
-import io.jeremymorren.opentelemetry.ui.components.OptionsToolbarAction;
-import io.jeremymorren.opentelemetry.ui.components.ToggleCaseInsensitiveSearchToolbarAction;
-import io.jeremymorren.opentelemetry.ui.renderers.TelemetryDateRenderer;
+import io.jeremymorren.opentelemetry.ui.components.*;
+import io.jeremymorren.opentelemetry.ui.renderers.InstantRenderer;
 import io.jeremymorren.opentelemetry.ui.renderers.ActivityRenderer;
 import io.jeremymorren.opentelemetry.ui.renderers.TelemetryTypeRenderer;
 import kotlin.Unit;
-import org.apache.commons.lang3.StringEscapeUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ItemEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.util.ArrayList;
-import java.util.Date;
+import java.time.Instant;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 public class OpenTelemetryToolWindow {
@@ -77,6 +74,20 @@ public class OpenTelemetryToolWindow {
     private JComponent sqlPanel;
     private JTabbedPane tabbedPane;
     private JPanel formattedInfo;
+    private JScrollPane formattedInfoScrollPane;
+
+    private JCheckBox activityCheckBox;
+    private JCheckBox dependencyCheckBox;
+    private JCheckBox requestCheckBox;
+    private JLabel activityCounter;
+    private JLabel dependencyCounter;
+    private JLabel requestCounter;
+    @NotNull
+    private ColorBox activityColorBox;
+    @NotNull
+    private ColorBox dependencyColorBox;
+    @NotNull
+    private ColorBox requestColorBox;
 
     @NotNull
     private final Project project;
@@ -96,13 +107,14 @@ public class OpenTelemetryToolWindow {
 
     @NotNull
     private final TelemetryTableModel telemetryTableModel;
+
     @NotNull
     private final ArrayList<JLabel> telemetryTypesCounter = new ArrayList<>();
-
+    @NotNull
+    private final Map<TelemetryType, Integer> telemetryCountPerType = new HashMap<>();
 
     private boolean autoScrollToTheEnd;
     private final TextConsoleBuilder builder;
-    Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
     public OpenTelemetryToolWindow(
             @NotNull OpenTelemetrySession opentelemetrySession,
@@ -110,6 +122,8 @@ public class OpenTelemetryToolWindow {
             Lifetime lifetime) {
         this.project = project;
         this.openTelemetrySession = opentelemetrySession;
+
+//        initTelemetryTypeFilters();
 
         splitPane.setDividerLocation(0.5);
         splitPane.setResizeWeight(0.5);
@@ -122,8 +136,12 @@ public class OpenTelemetryToolWindow {
             throw new RuntimeException(e);
         }
 
+        //Increase scroll speed
+        formattedInfoScrollPane.getVerticalScrollBar().setUnitIncrement(12);
+        formattedInfoScrollPane.getHorizontalScrollBar().setUnitIncrement(12);
+
         logsTable.setDefaultRenderer(Activity.class, new ActivityRenderer());
-        logsTable.setDefaultRenderer(Date.class, new TelemetryDateRenderer());
+        logsTable.setDefaultRenderer(Instant.class, new InstantRenderer());
         logsTable.setDefaultRenderer(TelemetryType.class, new TelemetryTypeRenderer());
         logsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
@@ -208,6 +226,7 @@ public class OpenTelemetryToolWindow {
                 }
             });
         }
+        updateTelemetryTypeCounter(telemetry);
     }
 
     private void performAutoScrollToTheEnd() {
@@ -216,6 +235,10 @@ public class OpenTelemetryToolWindow {
     }
 
     private void createUIComponents() {
+        activityColorBox = new ColorBox(JBColor.namedColor("OpenTelemetry.TelemetryColor.Activity", JBColor.orange));
+        dependencyColorBox = new ColorBox(JBColor.namedColor("OpenTelemetry.TelemetryColor.Request", JBColor.blue));
+        requestColorBox = new ColorBox(JBColor.namedColor("OpenTelemetry.TelemetryColor.Dependency", JBColor.green));
+
         toolbar = createToolbar();
         toolbar.setTargetComponent(mainPanel);
         toolbar.setVisible(false);
@@ -294,6 +317,41 @@ public class OpenTelemetryToolWindow {
         }
     }
 
+    private void updateTelemetryTypeCounter(@Nullable Telemetry telemetry)
+    {
+        if (telemetry == null || telemetry.getType() == null)
+            return;
+        var count = telemetryCountPerType.getOrDefault(telemetry.getType(), 0);
+        count++;
+        telemetryCountPerType.put(telemetry.getType(), count);
+
+        var text = count.toString();
+        if (count > 1_000_000)
+        {
+            text = (count / 1_000_000) + "M";
+        }
+        else if (count > 1_000)
+        {
+            text = (count / 1_000) + "K";
+        }
+
+        for (JLabel counter: telemetryTypesCounter)
+        {
+            TelemetryType telemetryType = (TelemetryType) counter.getClientProperty("TelemetryType");
+            if (telemetryType != telemetry.getType())
+                continue;
+            counter.setText(text);
+        }
+    }
+
+    private void initTelemetryTypeFilters() {
+        activityCounter.putClientProperty("TelemetryType", TelemetryType.Activity);
+        dependencyCounter.putClientProperty("TelemetryType", TelemetryType.Dependency);
+        requestCounter.putClientProperty("TelemetryType", TelemetryType.Request);
+
+        telemetryTypesCounter.addAll(Arrays.asList(activityCounter, dependencyCounter, requestCounter));
+    }
+
     private void updateJsonPreview(String json) {
         ApplicationManager.getApplication().runWriteAction(() -> jsonPreviewDocument.setText(json));
 
@@ -334,19 +392,24 @@ public class OpenTelemetryToolWindow {
         formattedInfo.add(createTitleLabel(activity.getTypeDisplay()), createConstraint(row++, 0));
         if (activity.getActivitySource() != null)
         {
-            formattedInfo.add(new JLabel("Source: " + activity.getActivitySource()), createConstraint(row++, indent));
+            formattedInfo.add(createFilterLabel("Source", activity.getActivitySource()), createConstraint(row++, indent));
         }
         if (activity.getElapsed() != null) {
             formattedInfo.add(new JLabel("Duration: " + activity.getElapsed().toString()), createConstraint(row++, indent));
         }
         if (activity.getDisplayName() != null) {
-            formattedInfo.add(new JLabel("Display name: " + activity.getDisplayName()), createConstraint(row++, indent));
+            formattedInfo.add(createFilterLabel("Display name", activity.getDisplayName()), createConstraint(row++, indent));
         }
         if (activity.getOperationName() != null) {
-            formattedInfo.add(new JLabel("Operation: " + activity.getOperationName()), createConstraint(row++, indent));
+            formattedInfo.add(createFilterLabel("Operation", activity.getOperationName()), createConstraint(row++, indent));
         }
         if (activity.getStatus() != null) {
             formattedInfo.add(new JLabel("Status: " + activity.getStatus()), createConstraint(row++, indent));
+        }
+        if (activity.getDbQueryTime() != null) {
+            var label = new JLabel("DB Time: " + activity.getDbQueryTime());
+            label.setToolTipText("Time spent before first response received");
+            formattedInfo.add(label, createConstraint(row++, indent));
         }
         if (activity.getTags() != null) {
             formattedInfo.add(createTitleLabel("Tags"), createConstraint(row++, 0));
@@ -375,6 +438,9 @@ public class OpenTelemetryToolWindow {
 
     private JLabel createFilterLabel(String label, String value) {
         var display = value.replace("\r", "").replace("\n", " ");
+        if (display.length() > 100) {
+            display = display.substring(0, 100) + "...";
+        }
         JLabel jLabel = new JLabel("<html>" + escapeHtml(label) + ": " + "<a href=''>" + escapeHtml(display) + "</a></html>");
         jLabel.setCursor(new Cursor(Cursor.HAND_CURSOR));
         jLabel.addMouseListener(new ClickListener(e -> {

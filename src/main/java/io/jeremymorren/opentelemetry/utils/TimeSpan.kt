@@ -1,6 +1,7 @@
 package io.jeremymorren.opentelemetry.utils
 
 import java.text.DecimalFormat
+import java.time.Duration
 
 /**
  * C# Timespan equivalent (HH:mm:ss.ffffff)
@@ -30,6 +31,12 @@ class TimeSpan : Comparable<TimeSpan> {
         hours = hourMinuteSeconds[0].toInt()
         minutes = hourMinuteSeconds[1].toInt()
         seconds = hourMinuteSeconds[2].toDouble()
+    }
+
+    constructor(duration: Duration) {
+        hours = duration.toHoursPart()
+        minutes = duration.toMinutesPart()
+        seconds = duration.toSecondsPart() + (duration.nano / 1_000_000_000.0);
     }
 
     override fun toString(): String {

@@ -2,10 +2,11 @@ package io.jeremymorren.opentelemetry.ui.renderers
 
 import java.awt.Component
 import java.text.SimpleDateFormat
+import java.time.Instant
 import java.util.*
 import javax.swing.JTable
 
-class TelemetryDateRenderer : TelemetryRendererBase() {
+class InstantRenderer : TelemetryRendererBase() {
     private val simpleDateFormat = SimpleDateFormat("HH:mm:ss.S")
 
     override fun getTableCellRendererComponent(
@@ -18,8 +19,9 @@ class TelemetryDateRenderer : TelemetryRendererBase() {
     ): Component {
         super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column)
 
-        if (value is Date) {
-            super.setText(simpleDateFormat.format(value))
+        if (value is Instant) {
+            val date = Date.from(value)
+            super.setText(simpleDateFormat.format(date))
         }
 
         return this
