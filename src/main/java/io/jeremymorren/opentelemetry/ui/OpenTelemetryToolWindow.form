@@ -116,6 +116,85 @@
           </tabbedpane>
         </children>
       </splitpane>
+      <grid id="53d4d" layout-manager="GridLayoutManager" row-count="2" column-count="6" same-size-horizontally="false" same-size-vertically="false" hgap="4" vgap="0">
+        <margin top="0" left="0" bottom="0" right="0"/>
+        <constraints>
+          <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="3" hsize-policy="5" anchor="9" fill="0" indent="0" use-parent-layout="false"/>
+        </constraints>
+        <properties/>
+        <border type="none"/>
+        <children>
+          <component id="81b36" class="javax.swing.JCheckBox" binding="activityCheckBox">
+            <constraints>
+              <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="0" indent="0" use-parent-layout="false"/>
+            </constraints>
+            <properties>
+              <text value="Activity"/>
+              <toolTipText value=""/>
+            </properties>
+          </component>
+          <component id="59fe1" class="javax.swing.JLabel" binding="activityCounter">
+            <constraints>
+              <grid row="1" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="5" fill="0" indent="0" use-parent-layout="false"/>
+            </constraints>
+            <properties>
+              <text value="0"/>
+            </properties>
+          </component>
+          <component id="57635" class="io.jeremymorren.opentelemetry.ui.components.ColorBox" binding="activityColorBox" custom-create="true">
+            <constraints>
+              <grid row="0" column="0" row-span="2" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
+            </constraints>
+            <properties/>
+          </component>
+          <component id="4f60b" class="io.jeremymorren.opentelemetry.ui.components.ColorBox" binding="dependencyColorBox" custom-create="true">
+            <constraints>
+              <grid row="0" column="2" row-span="2" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
+            </constraints>
+            <properties/>
+          </component>
+          <component id="c3805" class="javax.swing.JCheckBox" binding="dependencyCheckBox">
+            <constraints>
+              <grid row="0" column="3" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="0" indent="0" use-parent-layout="false"/>
+            </constraints>
+            <properties>
+              <text value="Dependency"/>
+              <toolTipText value=""/>
+            </properties>
+          </component>
+          <component id="9477b" class="javax.swing.JLabel" binding="dependencyCounter">
+            <constraints>
+              <grid row="1" column="3" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="5" fill="0" indent="0" use-parent-layout="false"/>
+            </constraints>
+            <properties>
+              <text value="0"/>
+            </properties>
+          </component>
+          <component id="2eb84" class="javax.swing.JCheckBox" binding="requestCheckBox">
+            <constraints>
+              <grid row="0" column="5" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="0" indent="0" use-parent-layout="false"/>
+            </constraints>
+            <properties>
+              <text value="Request"/>
+              <toolTipText value=""/>
+            </properties>
+          </component>
+          <component id="9a22e" class="javax.swing.JLabel" binding="requestCounter">
+            <constraints>
+              <grid row="1" column="5" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="5" fill="0" indent="0" use-parent-layout="false"/>
+            </constraints>
+            <properties>
+              <text value="0"/>
+            </properties>
+          </component>
+          <component id="3a138" class="io.jeremymorren.opentelemetry.ui.components.ColorBox" binding="requestColorBox" custom-create="true">
+            <constraints>
+              <grid row="0" column="4" row-span="2" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="1" use-parent-layout="false"/>
+            </constraints>
+            <properties/>
+          </component>
+        </children>
+      </grid>
       <component id="59f60" class="com.intellij.openapi.actionSystem.impl.ActionToolbarImpl" binding="toolbar" custom-create="true">
         <constraints>
           <grid row="0" column="0" row-span="2" col-span="1" vsize-policy="3" hsize-policy="2" anchor="9" fill="0" indent="0" use-parent-layout="false">

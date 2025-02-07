@@ -123,7 +123,7 @@ public class OpenTelemetryToolWindow {
         this.project = project;
         this.openTelemetrySession = opentelemetrySession;
 
-//        initTelemetryTypeFilters();
+        initTelemetryTypeFilters();
 
         splitPane.setDividerLocation(0.5);
         splitPane.setResizeWeight(0.5);
@@ -350,6 +350,18 @@ public class OpenTelemetryToolWindow {
         requestCounter.putClientProperty("TelemetryType", TelemetryType.Request);
 
         telemetryTypesCounter.addAll(Arrays.asList(activityCounter, dependencyCounter, requestCounter));
+
+        activityCheckBox.putClientProperty("TelemetryType", TelemetryType.Activity);
+        dependencyCheckBox.putClientProperty("TelemetryType", TelemetryType.Dependency);
+        requestCheckBox.putClientProperty("TelemetryType", TelemetryType.Request);
+
+        for (JCheckBox checkBox: new JCheckBox[]{activityCheckBox, dependencyCheckBox, requestCheckBox})
+        {
+            var type = (TelemetryType) checkBox.getClientProperty("TelemetryType");
+            checkBox.setSelected(openTelemetrySession.isTelemetryVisible(type));
+            checkBox.addItemListener(e ->
+                    openTelemetrySession.setTelemetryVisible(type, e.getStateChange() == ItemEvent.SELECTED));
+        }
     }
 
     private void updateJsonPreview(String json) {
