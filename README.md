@@ -18,6 +18,20 @@ https://www.nuget.org/packages/Ozkanpakdil.OpenTelemetry.Exporter.Json.Console
 </ItemGroup>
 ```
 
+```csharp
+using OpenTelemetry.Exporter;
+using OpenTelemetry.Trace;
+using Ozkanpakdil.OpenTelemetry.Exporter.Json.Console;
+
+var tracerProvider = Sdk.CreateTracerProviderBuilder()
+    .AddHttpClientInstrumentation()
+    .AddJsonConsoleExporter(o => o.Targets = ConsoleExporterOutputTargets.Debug)
+    .Build();
+
+var client = new HttpClient();
+await client.GetAsync("https://github.com/");
+```
+
 ### Dev
 
 To edit and test the plugin, just open this project with [InteliJ IDEA](https://www.jetbrains.com/idea/) and run the plugin with predefined run configuration
@@ -40,4 +54,4 @@ Kudos to https://github.com/Socolin/ApplicationInsightsRiderPlugin and https://g
 
 ### Latest dev version
 
-Latest version can be found [here](https://github.com/ozkanpakdil/opentelemetry-debug-log-viewer-rider-plugin/releases/tag/latest_dev)
+Latest version can be found [here](https://github.com/jeremy-morren/opentelemetry-debug-log-viewer-rider-plugin)

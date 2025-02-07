@@ -49,9 +49,11 @@ data class Telemetry(
 
     val type: TelemetryType? = telemetry.activity.getType()
 
-    val duration: TimeSpan? = telemetry.activity.getDuration()
+    val duration: TimeSpan? = telemetry.activity.getElapsed()
 
     val lowerCaseJson: String = json.lowercase(Locale.getDefault())
+
+    val sql: String? = telemetry.activity.getDbQuery()
 }
 
 @Serializable
@@ -62,11 +64,12 @@ data class TelemetryInfo(
 @Serializable
 @JsonIgnoreUnknownKeys
 data class Activity(
+    val rootId: String? = null,
     val traceId: String? = null,
     val spanId: String? = null,
+    val parentSpanId: String? = null,
     val activityTraceFlags: String? = null,
     val traceStateString: String? = null,
-    val parentSpanId: String? = null,
     val activitySourceName: String? = null,
     val activitySourceVersion: String? = null,
     val displayName: String? = null,
@@ -76,15 +79,32 @@ data class Activity(
     val tags: Map<String, String>? = null,
     val operationName: String? = null,
     val statusCode: ActivityStatusCode? = null,
-    val statusDescription: String? = null,
+    val statusDescription: String? = null
 ) {
+
+
+    fun getStartTime(): Date? {
+        if (startTime == null) {
+            return null
+        }
+        val instant = Instant.parse(startTime)
+        return Date.from(instant)
+    }
+
+    fun getElapsed() : TimeSpan? {
+        if (duration == null) {
+            return null
+        }
+        return TimeSpan(duration);
+    }
+
     private fun sourceLower(): String = activitySourceName?.lowercaseLocaleAgnostic() ?: "";
 
     fun getType(): TelemetryType? {
         if (activitySourceName == null) {
             return null
         }
-        if (kind == ActivityKind.Server && getRequestUrl() != null) {
+        if (kind == ActivityKind.Server && getRequestPath() != null) {
             return TelemetryType.Request;
         }
         if (kind == ActivityKind.Client) {
@@ -96,25 +116,36 @@ data class Activity(
         return null;
     }
 
-    private fun getRequestUrl(): String? {
+    fun getTypeDisplay(): String {
+        val sb = StringBuilder();
+        sb.append(getType()?.name ?: "Unknown")
+        if (getSubType() != null) {
+            sb.append(" - ")
+            sb.append(getSubType())
+        }
+        return sb.toString();
+    }
+
+    public fun getRequestPath(): String? {
         if (tags == null) return null;
         val sb = StringBuilder();
-        sb.append(tags.getOrDefault("url.full", ""));
         sb.append(tags.getOrDefault("url.path", ""));
         sb.append(tags.getOrDefault("url.query", ""));
         if (sb.isEmpty()) return null;
         return sb.toString();
     }
 
-    private fun getDbQuery(): String? = tags?.get("db.query.text") ?: tags?.get("db.statement")
+    public fun getFullUrl(): String? = tags?.getOrDefault("url.full", null);
 
-    private fun getDbName(): String? = tags?.get("db.name")
+    public fun getDbQuery(): String? = (tags?.get("db.query.text") ?: tags?.get("db.statement"))?.replace("\r", "")
 
-    private fun getResponseStatusCode(): String? = tags?.get("http.response.status_code")
+    public fun getDbName(): String? = tags?.get("db.name")
 
-    private fun getStatus(): String? = statusDescription ?: tags?.get("error.type")
+    public fun getResponseStatusCode(): String? = tags?.get("http.response.status_code")
 
-    private fun getSubType(): String? {
+    public fun getStatus(): String? = statusDescription ?: tags?.get("error.type")
+
+    public fun getSubType(): String? {
         if (activitySourceName == null) {
             return null
         }
@@ -127,19 +158,26 @@ data class Activity(
         return null
     }
 
-    fun getStartTime(): Date? {
-        if (startTime == null) {
-            return null
+    public fun getActivitySource(): String? {
+        if (activitySourceVersion.isNullOrEmpty()) {
+            return activitySourceName
         }
-        val instant = Instant.parse(startTime)
-        return Date.from(instant)
+        return "$activitySourceName ($activitySourceVersion)"
     }
 
-    fun getDuration() : TimeSpan? {
-        if (duration == null) {
-            return null
-        }
-        return TimeSpan(duration);
+    fun getTraceIds(): Map<String, String> {
+        val traceIds = mutableMapOf<String, String>()
+        if (rootId != null)
+            traceIds["Root ID"] = rootId
+        if (traceId != null)
+            traceIds["Trace ID"] = traceId
+        if (spanId != null)
+            traceIds["Span ID"] = spanId
+        if (parentSpanId != null)
+            traceIds["Parent Span ID"] = parentSpanId
+        if (activityTraceFlags != null)
+            traceIds["Flags"] = activityTraceFlags
+        return traceIds
     }
 
     fun getDetail(): String? {
@@ -160,8 +198,8 @@ data class Activity(
         if (getDbQuery() != null) {
             parts.add(getDbQuery()!!)
         }
-        if (getRequestUrl() != null) {
-            parts.add(getRequestUrl()!!)
+        if (getFullUrl() != null) {
+            parts.add(getFullUrl()!!)
         }
         if (parts.size == 0) {
             return null

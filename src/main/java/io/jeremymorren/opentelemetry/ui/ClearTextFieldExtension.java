@@ -5,12 +5,12 @@ import com.intellij.ui.components.fields.ExtendableTextComponent;
 import com.intellij.ui.components.fields.ExtendableTextField;
 
 import javax.swing.*;
+import java.awt.event.KeyListener;
 
 public class ClearTextFieldExtension implements ExtendableTextComponent.Extension {
     private final ExtendableTextField textField;
 
     public ClearTextFieldExtension(ExtendableTextField textField) {
-
         this.textField = textField;
     }
 
@@ -26,6 +26,15 @@ public class ClearTextFieldExtension implements ExtendableTextComponent.Extensio
 
     @Override
     public Runnable getActionOnClick() {
-        return textField.getText().isEmpty() ? null : () -> textField.setText(null);
+        return () -> {
+            if (!textField.getText().isEmpty()) {
+                textField.setText(null);
+            }
+            // Trigger key events to update the UI
+            for (KeyListener keyListener : textField.getKeyListeners()) {
+                keyListener.keyTyped(null);
+                keyListener.keyReleased(null);
+            }
+        };
     }
 }

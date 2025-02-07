@@ -8,6 +8,7 @@ import com.intellij.execution.filters.TextConsoleBuilderFactory;
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.json.JsonFileType;
 import com.intellij.json.JsonLanguage;
+import com.intellij.lang.Language;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
 import com.intellij.openapi.actionSystem.ex.ActionUtil;
@@ -29,6 +30,7 @@ import com.intellij.ui.components.fields.ExtendableTextField;
 import com.intellij.ui.table.JBTable;
 import com.intellij.unscramble.AnalyzeStacktraceUtil;
 import com.intellij.util.concurrency.AppExecutorUtil;
+import com.intellij.util.ui.JBUI;
 import com.jetbrains.rd.util.lifetime.Lifetime;
 import io.jeremymorren.opentelemetry.Activity;
 import io.jeremymorren.opentelemetry.TelemetryType;
@@ -43,15 +45,18 @@ import io.jeremymorren.opentelemetry.ui.renderers.TelemetryDateRenderer;
 import io.jeremymorren.opentelemetry.ui.renderers.ActivityRenderer;
 import io.jeremymorren.opentelemetry.ui.renderers.TelemetryTypeRenderer;
 import kotlin.Unit;
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
+import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 public class OpenTelemetryToolWindow {
@@ -68,21 +73,33 @@ public class OpenTelemetryToolWindow {
     @NotNull
     private ActionToolbarImpl toolbar;
     @NotNull
-    private JComponent editorPanel;
+    private JComponent jsonPanel;
+    private JComponent sqlPanel;
+    private JTabbedPane tabbedPane;
+    private JPanel formattedInfo;
 
     @NotNull
     private final Project project;
     @NotNull
-    private final OpenTelemetrySession opentelemetrySession;
+    private final OpenTelemetrySession openTelemetrySession;
 
     @NotNull
-    private Editor editor;
+    private Editor jsonEditor;
+    @NotNull
+    private Editor sqlEditor;
+
+    @NotNull
+    private Document jsonPreviewDocument;
+
+    @NotNull
+    private Document sqlPreviewDocument;
+
     @NotNull
     private final TelemetryTableModel telemetryTableModel;
     @NotNull
     private final ArrayList<JLabel> telemetryTypesCounter = new ArrayList<>();
-    @NotNull
-    private Document jsonPreviewDocument;
+
+
     private boolean autoScrollToTheEnd;
     private final TextConsoleBuilder builder;
     Gson gson = new GsonBuilder().setPrettyPrinting().create();
@@ -92,7 +109,7 @@ public class OpenTelemetryToolWindow {
             @NotNull Project project,
             Lifetime lifetime) {
         this.project = project;
-        this.opentelemetrySession = opentelemetrySession;
+        this.openTelemetrySession = opentelemetrySession;
 
         splitPane.setDividerLocation(0.5);
         splitPane.setResizeWeight(0.5);
@@ -129,12 +146,12 @@ public class OpenTelemetryToolWindow {
 
             @Override
             public void keyPressed(KeyEvent e) {
-                OpenTelemetryToolWindow.this.opentelemetrySession.updateFilter(filter.getText());
+                OpenTelemetryToolWindow.this.openTelemetrySession.updateFilter(filter.getText());
             }
 
             @Override
             public void keyReleased(KeyEvent e) {
-                OpenTelemetryToolWindow.this.opentelemetrySession.updateFilter(filter.getText());
+                OpenTelemetryToolWindow.this.openTelemetrySession.updateFilter(filter.getText());
             }
         });
 
@@ -153,14 +170,13 @@ public class OpenTelemetryToolWindow {
     }
 
     private void selectTelemetry(@Nullable Telemetry telemetry) {
-        updateJsonPreview(telemetry != null ? telemetry.getJson() : "");
-    }
-
-    private void updateJsonPreview(String json) {
-        ApplicationManager.getApplication().runWriteAction(() -> jsonPreviewDocument.setText(json));
-
-        CodeFoldingManager.getInstance(ProjectManager.getInstance().getDefaultProject())
-                .updateFoldRegions(editor);
+        if (telemetry == null)
+        {
+            return;
+        }
+        updateJsonPreview(telemetry.getJson());
+        updateSqlPreview(telemetry.getSql());
+        updateFormattedDisplay(telemetry.getTelemetry().getActivity());
     }
 
     @NotNull
@@ -205,19 +221,27 @@ public class OpenTelemetryToolWindow {
         toolbar.setVisible(false);
 
         jsonPreviewDocument = new LanguageTextField.SimpleDocumentCreator().createDocument("", JsonLanguage.INSTANCE, project);
-        editor = EditorFactory.getInstance().createViewer(jsonPreviewDocument, project, EditorKind.MAIN_EDITOR);
-        if (editor instanceof EditorEx) {
-            ((EditorEx) editor).setHighlighter(
-                    EditorHighlighterFactory.getInstance().createEditorHighlighter(project, JsonFileType.INSTANCE));
-            ((EditorEx) editor).getFoldingModel().setFoldingEnabled(true);
-        }
-        editor.getSettings().setIndentGuidesShown(true);
-        editor.getSettings().setAdditionalLinesCount(3);
-        editor.getSettings().setFoldingOutlineShown(true);
-        editor.getSettings().setUseSoftWraps(
-                PropertiesComponent.getInstance().getBoolean("io.jeremymorren.opentelemetry.useSoftWrap"));
+        sqlPreviewDocument = new LanguageTextField.SimpleDocumentCreator().createDocument("", Language.findLanguageByID("SQL"), project);
 
-        editorPanel = editor.getComponent();
+        jsonEditor = EditorFactory.getInstance().createViewer(jsonPreviewDocument, project, EditorKind.MAIN_EDITOR);
+        sqlEditor = EditorFactory.getInstance().createViewer(sqlPreviewDocument, project, EditorKind.MAIN_EDITOR);
+
+        Editor[] editors = {jsonEditor, sqlEditor};
+        for (Editor editor : editors) {
+            if (editor instanceof EditorEx) {
+                ((EditorEx) editor).setHighlighter(
+                        EditorHighlighterFactory.getInstance().createEditorHighlighter(project, JsonFileType.INSTANCE));
+                ((EditorEx) editor).getFoldingModel().setFoldingEnabled(true);
+            }
+            editor.getSettings().setIndentGuidesShown(true);
+            editor.getSettings().setAdditionalLinesCount(3);
+            editor.getSettings().setFoldingOutlineShown(true);
+            editor.getSettings().setUseSoftWraps(
+                    PropertiesComponent.getInstance().getBoolean("io.jeremymorren.opentelemetry.useSoftWrap"));
+        }
+
+        jsonPanel = jsonEditor.getComponent();
+        sqlPanel = sqlEditor.getComponent();
     }
 
     @NotNull
@@ -230,7 +254,7 @@ public class OpenTelemetryToolWindow {
         autoScrollToTheEnd = PropertiesComponent.getInstance()
                 .getBoolean("io.jeremymorren.opentelemetry.autoScrollToTheEnd");
 
-        actionGroup.add(new AutoScrollToTheEndToolbarAction(this::acceptScrollRoEnd, autoScrollToTheEnd));
+        actionGroup.add(new AutoScrollToTheEndToolbarAction(this::acceptScrollToEnd, autoScrollToTheEnd));
 
         actionGroup.add(new ToggleCaseInsensitiveSearchToolbarAction());
 
@@ -248,26 +272,147 @@ public class OpenTelemetryToolWindow {
             @NotNull
             @Override
             protected Editor getEditor(@NotNull AnActionEvent e) {
-                return editor;
+                return jsonEditor;
             }
         });
 
         actionGroup.add(new ClearApplicationInsightsLogToolbarAction() {
             @Override
             public void actionPerformed(@NotNull AnActionEvent anActionEvent) {
-                opentelemetrySession.clear();
+                openTelemetrySession.clear();
             }
         });
 
         return new ActionToolbarImpl("OpenTelemetry", actionGroup, false);
     }
 
-    private void acceptScrollRoEnd(Boolean selected) {
+    private void acceptScrollToEnd(Boolean selected) {
         autoScrollToTheEnd = selected;
         PropertiesComponent.getInstance().setValue("io.jeremymorren.opentelemetry.autoScrollToTheEnd", selected);
         if (autoScrollToTheEnd) {
             performAutoScrollToTheEnd();
         }
+    }
+
+    private void updateJsonPreview(String json) {
+        ApplicationManager.getApplication().runWriteAction(() -> jsonPreviewDocument.setText(json));
+
+        CodeFoldingManager.getInstance(ProjectManager.getInstance().getDefaultProject())
+                .updateFoldRegions(jsonEditor);
+    }
+
+    private void updateSqlPreview(@Nullable String sql) {
+        if (sql == null) {
+            //No SQL for this telemetry. Disable the SQL tab and select the first tab
+            tabbedPane.setEnabledAt(2, false);
+            if (tabbedPane.getSelectedIndex() == 2)
+                tabbedPane.setSelectedIndex(0);
+            return;
+        }
+        tabbedPane.setEnabledAt(2, true);
+
+        ApplicationManager.getApplication().runWriteAction(() -> sqlPreviewDocument.setText(sql));
+
+        CodeFoldingManager.getInstance(ProjectManager.getInstance().getDefaultProject())
+                .updateFoldRegions(jsonEditor);
+    }
+
+    private void updateFormattedDisplay(@NotNull Activity activity) {
+        // Show information about the telemetry
+        formattedInfo.removeAll();
+
+        int indent = 30; //Indentation for subfields
+
+        int row = 1;
+        if (activity.getRootId() != null) {
+            //Add root id
+            formattedInfo.add(createTitleLabel("RootId"), createConstraint(row++, 0));
+            formattedInfo.add(createFilterLabel("RootId", activity.getRootId()), createConstraint(row++, indent));
+        }
+
+        //Show activity information
+        formattedInfo.add(createTitleLabel(activity.getTypeDisplay()), createConstraint(row++, 0));
+        if (activity.getActivitySource() != null)
+        {
+            formattedInfo.add(new JLabel("Source: " + activity.getActivitySource()), createConstraint(row++, indent));
+        }
+        if (activity.getElapsed() != null) {
+            formattedInfo.add(new JLabel("Duration: " + activity.getElapsed().toString()), createConstraint(row++, indent));
+        }
+        if (activity.getDisplayName() != null) {
+            formattedInfo.add(new JLabel("Display name: " + activity.getDisplayName()), createConstraint(row++, indent));
+        }
+        if (activity.getOperationName() != null) {
+            formattedInfo.add(new JLabel("Operation: " + activity.getOperationName()), createConstraint(row++, indent));
+        }
+        if (activity.getStatus() != null) {
+            formattedInfo.add(new JLabel("Status: " + activity.getStatus()), createConstraint(row++, indent));
+        }
+        if (activity.getTags() != null) {
+            formattedInfo.add(createTitleLabel("Tags"), createConstraint(row++, 0));
+            for (Map.Entry<String, String> entry : activity.getTags().entrySet()) {
+                var label = createFilterLabel(entry.getKey(), entry.getValue());
+                formattedInfo.add(label, createConstraint(row++, indent));
+            }
+        }
+        //Add trace information
+        formattedInfo.add(createTitleLabel("Trace"), createConstraint(row++, 0));
+        for (Map.Entry<String, String> entry : activity.getTraceIds().entrySet()) {
+            var label = createFilterLabel(entry.getKey(), entry.getValue());
+            formattedInfo.add(label, createConstraint(row++, indent));
+        }
+
+        // Padding
+        {
+            GridBagConstraints c = createConstraint(10_000, 0);
+            c.weighty = 1;
+            formattedInfo.add(new JPanel(), c);
+        }
+
+        formattedInfo.revalidate();
+        formattedInfo.repaint();
+    }
+
+    private JLabel createFilterLabel(String label, String value) {
+        var display = value.replace("\r", "").replace("\n", " ");
+        JLabel jLabel = new JLabel("<html>" + escapeHtml(label) + ": " + "<a href=''>" + escapeHtml(display) + "</a></html>");
+        jLabel.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        jLabel.addMouseListener(new ClickListener(e -> {
+            openTelemetrySession.updateFilter(value);
+            this.filter.setText(value);
+        }));
+        return jLabel;
+    }
+
+    @NotNull
+    private JLabel createTitleLabel(String label) {
+        JLabel title = new JLabel("<html><b>" + escapeHtml(label) + "</b></html>");
+        Font font = title.getFont();
+        font.deriveFont(Font.BOLD);
+        title.setFont(font);
+        return title;
+    }
+
+    @NotNull
+    private GridBagConstraints createConstraint(int y, int padX) {
+        return createConstraint(0, y, padX);
+    }
+    private GridBagConstraints createConstraint(int x, int y, int padX) {
+        GridBagConstraints gridConstraints = new GridBagConstraints();
+        gridConstraints.gridx = x;
+        gridConstraints.gridy = y;
+        gridConstraints.gridheight = 1;
+        gridConstraints.gridwidth = 1;
+        gridConstraints.fill = GridBagConstraints.HORIZONTAL;
+        gridConstraints.weightx = 1;
+        gridConstraints.weighty = 0;
+        gridConstraints.anchor = GridBagConstraints.NORTHEAST;
+        gridConstraints.insets = JBUI.insetsLeft(padX);
+        return gridConstraints;
+    }
+
+    private static String escapeHtml(String s) {
+        return org.apache.commons.text.StringEscapeUtils.escapeHtml4(s);
     }
 }
 

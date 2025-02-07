@@ -25,11 +25,10 @@ public class OptionsToolbarAction extends AnAction {
     @Override
     public void actionPerformed(@NotNull AnActionEvent e) {
         DefaultActionGroup actionGroup = new DefaultActionGroup();
-        actionGroup.add(new FilterIndicatorToolbarAction());
         actionGroup.add(new Separator());
-        actionGroup.add(new ChangeFilterModeToolbarAction(FilterTelemetryMode.DEFAULT));
-        actionGroup.add(new ChangeFilterModeToolbarAction(FilterTelemetryMode.DURATION));
-        actionGroup.add(new ChangeFilterModeToolbarAction(FilterTelemetryMode.TIMESTAMP));
+        actionGroup.add(new ChangeFilterModeToolbarAction(FilterTelemetryMode.Default));
+        actionGroup.add(new ChangeFilterModeToolbarAction(FilterTelemetryMode.Duration));
+        actionGroup.add(new ChangeFilterModeToolbarAction(FilterTelemetryMode.Timestamp));
         actionGroup.add(new Separator());
         actionGroup.add(new OpenSettingsToolbarAction());
 

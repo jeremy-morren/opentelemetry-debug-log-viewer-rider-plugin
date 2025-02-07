@@ -16,7 +16,7 @@ public class ChangeFilterModeToolbarAction extends ToggleAction {
         super();
         this.mode = mode;
 
-        String message = OpenTelemetryBundle.message("action.opentelemetryaction.SortTelemetry." + mode);
+        String message = OpenTelemetryBundle.message("action.OpenTelemetry.SortTelemetry." + mode);
         this.getTemplatePresentation().setText(message);
         this.getTemplatePresentation().setIcon(AllIcons.RunConfigurations.SortbyDuration);
     }

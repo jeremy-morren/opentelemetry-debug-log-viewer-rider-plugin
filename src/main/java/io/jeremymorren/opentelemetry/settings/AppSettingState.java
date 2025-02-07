@@ -25,7 +25,7 @@ public class AppSettingState implements PersistentStateComponentWithModification
     @OptionTag(converter = BooleanPropertyConverter.class)
     public final Property<Boolean> showFilteredIndicator = new Property<>(false);
     @OptionTag(converter = FilterTelemetryModePropertyConverter.class)
-    public final Property<FilterTelemetryMode> filterTelemetryMode = new Property<>(FilterTelemetryMode.DEFAULT);
+    public final Property<FilterTelemetryMode> filterTelemetryMode = new Property<>(FilterTelemetryMode.Default);
     @OptionTag(converter = BooleanPropertyConverter.class)
     public final Property<Boolean> caseInsensitiveSearch = new Property<>(false);
 

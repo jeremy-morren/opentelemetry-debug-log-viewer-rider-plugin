@@ -2,59 +2,62 @@ package io.jeremymorren.opentelemetry.utils
 
 import java.text.DecimalFormat
 
+/**
+ * C# Timespan equivalent (HH:mm:ss.ffffff)
+ * @property hours Hour component
+ * @property minutes Minute component
+ * @property seconds Seconds component
+ */
 class TimeSpan : Comparable<TimeSpan> {
     val hours: Int
     val minutes: Int
-    val seconds: Int
-    val microseconds: Int
+    val seconds: Double
 
-    val milliseconds: Int
-        get() = microseconds / 1000
+    val milliseconds: Double
+        get() = seconds * 1_000
 
-    val totalMicroseconds: Long
-        get() = (((hours * 3600) + (minutes * 60) + seconds) * 1_000_000L) + microseconds
+    val microseconds: Double
+        get() = seconds * 1_000_000
 
-    constructor(hours: Int, minutes: Int, seconds: Int, microseconds: Int) {
+    constructor(hours: Int, minutes: Int, seconds: Double) {
         this.hours = hours
         this.minutes = minutes
         this.seconds = seconds
-        this.microseconds = microseconds
     }
 
     constructor(value: String) {
-        val split = value.split("\\.".toRegex(), limit = 2).toTypedArray()
-        val hourMinuteSeconds = split[0].split(":".toRegex(), limit = 3).toTypedArray()
+        val hourMinuteSeconds = value.split(":".toRegex(), limit = 3).toTypedArray()
         hours = hourMinuteSeconds[0].toInt()
         minutes = hourMinuteSeconds[1].toInt()
-        seconds = hourMinuteSeconds[2].toInt()
-        microseconds = if (split.size > 1) split[1].padEnd(6, '0').substring(0, 6).toInt() else 0
+        seconds = hourMinuteSeconds[2].toDouble()
     }
 
     override fun toString(): String {
-        val msPadded = (milliseconds / 10).toString().padStart(2, '0')
+        // Format with 1 decimal point
+        val formatter = DecimalFormat("0.0");
+
         if (hours != 0) {
-            return "${hours}h ${minutes}m $seconds.${msPadded}s"
+            return "${hours}h ${minutes}m ${formatter.format(seconds)}s"
         }
         if (minutes != 0) {
-            return "${minutes}m $seconds.${msPadded}s"
+            return "${minutes}m ${formatter.format(seconds)}s"
         }
-        if (seconds != 0) {
-            return "$seconds.${msPadded}s"
+
+        // For fractional parts: format the first significant part
+        if (seconds > 1) {
+            return "${formatter.format(seconds)} s"
         }
-        if (milliseconds != 0) {
-            // Format with decimal point
-            val formatter = DecimalFormat("0.0");
-            val ms = microseconds / 1000.0;
-            return "${formatter.format(ms)} ms"
+        if (milliseconds > 1) {
+            return "${formatter.format(milliseconds)} ms"
         }
-        if (microseconds != 0) {
-            return "$microseconds µs"
+        if (microseconds > 1) {
+            return "${formatter.format(milliseconds)}s µs"
         }
         return ""
     }
 
+    val totalSeconds: Double
+        get() = (hours * 3_600) + (minutes * 60) + seconds
 
-    override fun compareTo(other: TimeSpan): Int {
-        return totalMicroseconds.compareTo(other.totalMicroseconds)
-    }
+    override fun compareTo(other: TimeSpan): Int = totalSeconds.compareTo(other.totalSeconds)
 }

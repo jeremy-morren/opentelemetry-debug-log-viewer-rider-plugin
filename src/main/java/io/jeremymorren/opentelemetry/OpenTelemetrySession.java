@@ -109,14 +109,14 @@ public class OpenTelemetrySession {
             if (isTelemetryVisible(telemetry)) {
                 FilterTelemetryMode value = AppSettingState.getInstance().filterTelemetryMode.getValue();
                 switch (value) {
-                    case TIMESTAMP:
+                    case Timestamp:
                         index = Collections.binarySearch(filteredTelemetries, telemetry,
                                 Comparator.comparing(OpenTelemetrySession::getDuration));
                         if (index < 0)
                             index = ~index;
                         filteredTelemetries.add(index, telemetry);
                         break;
-                    case DURATION:
+                    case Duration:
                         index = Collections.binarySearch(filteredTelemetries, telemetry,
                                 Comparator.comparing(OpenTelemetrySession::getTimestamp));
                         if (index < 0)
@@ -132,7 +132,7 @@ public class OpenTelemetrySession {
         }
         if (openTelemetryToolWindow != null)
             openTelemetryToolWindow.addTelemetry(index, telemetry, visible,
-                    AppSettingState.getInstance().filterTelemetryMode.getValue() == FilterTelemetryMode.DEFAULT);
+                    AppSettingState.getInstance().filterTelemetryMode.getValue() == FilterTelemetryMode.Default);
     }
 
     private void updateFilteredTelemetries() {
@@ -140,8 +140,8 @@ public class OpenTelemetrySession {
             filteredTelemetries.clear();
             Stream<Telemetry> stream = telemetries.stream().filter(this::isTelemetryVisible);
             stream = switch (AppSettingState.getInstance().filterTelemetryMode.getValue()) {
-                case DURATION -> stream.sorted(Comparator.comparing(OpenTelemetrySession::getDuration));
-                case TIMESTAMP -> stream.sorted(Comparator.comparing(OpenTelemetrySession::getTimestamp));
+                case Duration -> stream.sorted(Comparator.comparing(OpenTelemetrySession::getDuration));
+                case Timestamp -> stream.sorted(Comparator.comparing(OpenTelemetrySession::getTimestamp));
                 default -> stream;
             };
             filteredTelemetries.addAll(stream.toList());
@@ -173,7 +173,7 @@ public class OpenTelemetrySession {
 
     private static TimeSpan getDuration(Telemetry telemetry) {
         if (telemetry.getDuration() == null)
-            return new TimeSpan(0, 0, 0, 0);
+            return new TimeSpan(0, 0, 0);
         return telemetry.getDuration();
     }
 

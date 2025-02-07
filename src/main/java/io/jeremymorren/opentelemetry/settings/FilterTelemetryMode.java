@@ -1,7 +1,10 @@
 package io.jeremymorren.opentelemetry.settings;
 
+/**
+ * Enum representing the different modes of filtering telemetry.
+ */
 public enum FilterTelemetryMode {
-    DEFAULT,
-    DURATION,
-    TIMESTAMP
+    Default,
+    Duration,
+    Timestamp
 }
