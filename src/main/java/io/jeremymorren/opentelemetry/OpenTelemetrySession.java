@@ -25,9 +25,9 @@ public class OpenTelemetrySession {
     @NotNull
     private final DotNetDebugProcess dotNetDebugProcess;
     @NotNull
-    private final List<Telemetry> telemetries = new ArrayList<>();
+    private final List<TelemetryItem> telemetries = new ArrayList<>();
     @NotNull
-    private final List<Telemetry> filteredTelemetries = new ArrayList<>();
+    private final List<TelemetryItem> filteredTelemetries = new ArrayList<>();
     @NotNull
     private final Set<TelemetryType> visibleTelemetryTypes = new HashSet<>(TelemetryType.getEntries());
     @NotNull
@@ -70,7 +70,7 @@ public class OpenTelemetrySession {
 
     public void startListeningToOutputDebugMessage() {
         dotNetDebugProcess.getSessionProxy().getTargetDebug().advise(lifetime, outputMessageWithSubject -> {
-            Telemetry telemetry = telemetryFactory.tryCreateFromDebugOutputLog(outputMessageWithSubject.getOutput());
+            TelemetryItem telemetry = telemetryFactory.tryCreateFromDebugOutputLog(outputMessageWithSubject.getOutput());
             if (telemetry != null) {
                 addTelemetry(telemetry);
             }
@@ -101,7 +101,7 @@ public class OpenTelemetrySession {
         updateFilteredTelemetries();
     }
 
-    private void addTelemetry(@NotNull Telemetry telemetry) {
+    private void addTelemetry(@NotNull TelemetryItem telemetry) {
         if (firstMessage) {
             firstMessage = false;
 
@@ -153,7 +153,7 @@ public class OpenTelemetrySession {
     private void updateFilteredTelemetries() {
         synchronized (telemetries) {
             filteredTelemetries.clear();
-            Stream<Telemetry> stream = telemetries.stream().filter(this::isTelemetryVisible);
+            Stream<TelemetryItem> stream = telemetries.stream().filter(this::isTelemetryVisible);
             stream = switch (AppSettingState.getInstance().filterTelemetryMode.getValue()) {
                 case Duration -> stream.sorted(Comparator.comparing(OpenTelemetrySession::getDuration));
                 case Timestamp -> stream.sorted(Comparator.comparing(OpenTelemetrySession::getTimestamp));
@@ -165,7 +165,7 @@ public class OpenTelemetrySession {
             openTelemetryToolWindow.setTelemetries(telemetries, filteredTelemetries);
     }
 
-    private boolean isTelemetryVisible(@NotNull Telemetry telemetry) {
+    private boolean isTelemetryVisible(@NotNull TelemetryItem telemetry) {
         if (telemetry.getType() != null && !visibleTelemetryTypes.contains(telemetry.getType()))
             return false;
         for (String filteredLog : projectSettingsState.filteredLogs.getValue()) {
@@ -188,15 +188,15 @@ public class OpenTelemetrySession {
         return true;
     }
 
-    private static TimeSpan getDuration(Telemetry telemetry) {
+    private static TimeSpan getDuration(TelemetryItem telemetry) {
         if (telemetry.getDuration() == null)
             return new TimeSpan(0, 0, 0);
         return telemetry.getDuration();
     }
 
-    private static Date getTimestamp(Telemetry telemetry) {
+    private static Instant getTimestamp(TelemetryItem telemetry) {
         if (telemetry.getTimestamp() == null)
-            return Date.from(Instant.EPOCH);
-        return Date.from(telemetry.getTimestamp());
+            return Instant.EPOCH;
+        return telemetry.getTimestamp();
     }
 }

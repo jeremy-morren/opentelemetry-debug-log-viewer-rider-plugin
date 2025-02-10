@@ -26,6 +26,7 @@ class TelemetryTypeRenderer : TelemetryRendererBase() {
             TelemetryType.Activity -> super.setForeground(JBColor.namedColor("OpenTelemetry.TelemetryColor.Activity", JBColor.orange))
             TelemetryType.Request -> super.setForeground(JBColor.namedColor("OpenTelemetry.TelemetryColor.Request", JBColor.green))
             TelemetryType.Dependency -> super.setForeground(JBColor.namedColor("OpenTelemetry.TelemetryColor.Dependency", JBColor.blue))
+            TelemetryType.Metric -> super.setForeground(JBColor.namedColor("OpenTelemetry.TelemetryColor.Metric", JBColor.gray))
         }
 
         return this

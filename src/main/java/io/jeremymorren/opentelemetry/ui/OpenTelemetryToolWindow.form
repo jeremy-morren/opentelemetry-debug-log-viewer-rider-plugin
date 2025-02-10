@@ -116,7 +116,7 @@
           </tabbedpane>
         </children>
       </splitpane>
-      <grid id="53d4d" layout-manager="GridLayoutManager" row-count="2" column-count="6" same-size-horizontally="false" same-size-vertically="false" hgap="4" vgap="0">
+      <grid id="53d4d" layout-manager="GridLayoutManager" row-count="2" column-count="8" same-size-horizontally="false" same-size-vertically="false" hgap="4" vgap="0">
         <margin top="0" left="0" bottom="0" right="0"/>
         <constraints>
           <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="3" hsize-policy="5" anchor="9" fill="0" indent="0" use-parent-layout="false"/>
@@ -187,11 +187,34 @@
               <text value="0"/>
             </properties>
           </component>
-          <component id="3a138" class="io.jeremymorren.opentelemetry.ui.components.ColorBox" binding="requestColorBox" custom-create="true">
+          <component id="f391c" class="io.jeremymorren.opentelemetry.ui.components.ColorBox" binding="metricColorBox" custom-create="true">
             <constraints>
-              <grid row="0" column="4" row-span="2" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="1" use-parent-layout="false"/>
+              <grid row="0" column="6" row-span="2" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
             </constraints>
             <properties/>
+          </component>
+          <component id="f9da3" class="io.jeremymorren.opentelemetry.ui.components.ColorBox" binding="requestColorBox" custom-create="true">
+            <constraints>
+              <grid row="0" column="4" row-span="2" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
+            </constraints>
+            <properties/>
+          </component>
+          <component id="c5fe6" class="javax.swing.JCheckBox" binding="metricCheckBox">
+            <constraints>
+              <grid row="0" column="7" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="0" indent="0" use-parent-layout="false"/>
+            </constraints>
+            <properties>
+              <text value="Metric"/>
+              <toolTipText value=""/>
+            </properties>
+          </component>
+          <component id="cfdc4" class="javax.swing.JLabel" binding="metricCounter">
+            <constraints>
+              <grid row="1" column="7" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="5" fill="0" indent="0" use-parent-layout="false"/>
+            </constraints>
+            <properties>
+              <text value="0"/>
+            </properties>
           </component>
         </children>
       </grid>

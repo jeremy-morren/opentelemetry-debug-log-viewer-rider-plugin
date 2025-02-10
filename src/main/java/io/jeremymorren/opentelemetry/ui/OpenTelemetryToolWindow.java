@@ -1,7 +1,5 @@
 package io.jeremymorren.opentelemetry.ui;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.intellij.codeInsight.folding.CodeFoldingManager;
 import com.intellij.execution.filters.TextConsoleBuilder;
 import com.intellij.execution.filters.TextConsoleBuilderFactory;
@@ -33,14 +31,11 @@ import com.intellij.unscramble.AnalyzeStacktraceUtil;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import com.intellij.util.ui.JBUI;
 import com.jetbrains.rd.util.lifetime.Lifetime;
-import io.jeremymorren.opentelemetry.Activity;
-import io.jeremymorren.opentelemetry.TelemetryType;
-import io.jeremymorren.opentelemetry.OpenTelemetrySession;
-import io.jeremymorren.opentelemetry.Telemetry;
+import io.jeremymorren.opentelemetry.*;
 import io.jeremymorren.opentelemetry.settings.AppSettingState;
 import io.jeremymorren.opentelemetry.ui.components.*;
 import io.jeremymorren.opentelemetry.ui.renderers.InstantRenderer;
-import io.jeremymorren.opentelemetry.ui.renderers.ActivityRenderer;
+import io.jeremymorren.opentelemetry.ui.renderers.TelemetryRenderer;
 import io.jeremymorren.opentelemetry.ui.renderers.TelemetryTypeRenderer;
 import kotlin.Unit;
 import org.jetbrains.annotations.NotNull;
@@ -88,6 +83,9 @@ public class OpenTelemetryToolWindow {
     private ColorBox dependencyColorBox;
     @NotNull
     private ColorBox requestColorBox;
+    private ColorBox metricColorBox;
+    private JCheckBox metricCheckBox;
+    private JLabel metricCounter;
 
     @NotNull
     private final Project project;
@@ -140,7 +138,7 @@ public class OpenTelemetryToolWindow {
         formattedInfoScrollPane.getVerticalScrollBar().setUnitIncrement(12);
         formattedInfoScrollPane.getHorizontalScrollBar().setUnitIncrement(12);
 
-        logsTable.setDefaultRenderer(Activity.class, new ActivityRenderer());
+        logsTable.setDefaultRenderer(Telemetry.class, new TelemetryRenderer());
         logsTable.setDefaultRenderer(Instant.class, new InstantRenderer());
         logsTable.setDefaultRenderer(TelemetryType.class, new TelemetryTypeRenderer());
         logsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -187,14 +185,18 @@ public class OpenTelemetryToolWindow {
         });
     }
 
-    private void selectTelemetry(@Nullable Telemetry telemetry) {
+    private void selectTelemetry(@Nullable TelemetryItem telemetry) {
         if (telemetry == null)
         {
             return;
         }
         updateJsonPreview(telemetry.getJson());
         updateSqlPreview(telemetry.getSql());
-        updateFormattedDisplay(telemetry.getTelemetry().getActivity());
+
+        if (telemetry.getTelemetry().getActivity() != null)
+            updateFormattedDisplayForActivity(telemetry.getTelemetry().getActivity());
+        else if (telemetry.getTelemetry().getMetric() != null)
+            updateFormattedDisplayForMetric(telemetry.getTelemetry().getMetric());
     }
 
     @NotNull
@@ -203,15 +205,15 @@ public class OpenTelemetryToolWindow {
     }
 
     public void setTelemetries(
-            @NotNull List<Telemetry> telemetries,
-            @NotNull List<Telemetry> visibleTelemetries
+            @NotNull List<TelemetryItem> telemetries,
+            @NotNull List<TelemetryItem> visibleTelemetries
     ) {
         telemetryTableModel.setRows(visibleTelemetries);
     }
 
     public void addTelemetry(
             int index,
-            @NotNull Telemetry telemetry,
+            @NotNull TelemetryItem telemetry,
             boolean visible,
             boolean shouldScroll
     ) {
@@ -238,6 +240,7 @@ public class OpenTelemetryToolWindow {
         activityColorBox = new ColorBox(JBColor.namedColor("OpenTelemetry.TelemetryColor.Activity", JBColor.orange));
         dependencyColorBox = new ColorBox(JBColor.namedColor("OpenTelemetry.TelemetryColor.Request", JBColor.blue));
         requestColorBox = new ColorBox(JBColor.namedColor("OpenTelemetry.TelemetryColor.Dependency", JBColor.green));
+        metricColorBox = new ColorBox(JBColor.namedColor("OpenTelemetry.TelemetryColor.Metric", JBColor.gray));
 
         toolbar = createToolbar();
         toolbar.setTargetComponent(mainPanel);
@@ -317,7 +320,7 @@ public class OpenTelemetryToolWindow {
         }
     }
 
-    private void updateTelemetryTypeCounter(@Nullable Telemetry telemetry)
+    private void updateTelemetryTypeCounter(@Nullable TelemetryItem telemetry)
     {
         if (telemetry == null || telemetry.getType() == null)
             return;
@@ -338,9 +341,8 @@ public class OpenTelemetryToolWindow {
         for (JLabel counter: telemetryTypesCounter)
         {
             TelemetryType telemetryType = (TelemetryType) counter.getClientProperty("TelemetryType");
-            if (telemetryType != telemetry.getType())
-                continue;
-            counter.setText(text);
+            if (telemetryType == telemetry.getType())
+                counter.setText(text);
         }
     }
 
@@ -348,14 +350,16 @@ public class OpenTelemetryToolWindow {
         activityCounter.putClientProperty("TelemetryType", TelemetryType.Activity);
         dependencyCounter.putClientProperty("TelemetryType", TelemetryType.Dependency);
         requestCounter.putClientProperty("TelemetryType", TelemetryType.Request);
+        metricCounter.putClientProperty("TelemetryType", TelemetryType.Metric);
 
-        telemetryTypesCounter.addAll(Arrays.asList(activityCounter, dependencyCounter, requestCounter));
+        telemetryTypesCounter.addAll(Arrays.asList(activityCounter, dependencyCounter, requestCounter, metricCounter));
 
         activityCheckBox.putClientProperty("TelemetryType", TelemetryType.Activity);
         dependencyCheckBox.putClientProperty("TelemetryType", TelemetryType.Dependency);
         requestCheckBox.putClientProperty("TelemetryType", TelemetryType.Request);
+        metricCheckBox.putClientProperty("TelemetryType", TelemetryType.Metric);
 
-        for (JCheckBox checkBox: new JCheckBox[]{activityCheckBox, dependencyCheckBox, requestCheckBox})
+        for (JCheckBox checkBox: new JCheckBox[]{activityCheckBox, dependencyCheckBox, requestCheckBox, metricCheckBox})
         {
             var type = (TelemetryType) checkBox.getClientProperty("TelemetryType");
             checkBox.setSelected(openTelemetrySession.isTelemetryVisible(type));
@@ -387,7 +391,7 @@ public class OpenTelemetryToolWindow {
                 .updateFoldRegions(jsonEditor);
     }
 
-    private void updateFormattedDisplay(@NotNull Activity activity) {
+    private void updateFormattedDisplayForActivity(@NotNull Activity activity) {
         // Show information about the telemetry
         formattedInfo.removeAll();
 
@@ -402,9 +406,9 @@ public class OpenTelemetryToolWindow {
 
         //Show activity information
         formattedInfo.add(createTitleLabel(activity.getTypeDisplay()), createConstraint(row++, 0));
-        if (activity.getActivitySource() != null)
+        if (activity.getSource() != null)
         {
-            formattedInfo.add(createFilterLabel("Source", activity.getActivitySource()), createConstraint(row++, indent));
+            formattedInfo.add(createFilterLabel("Source", activity.getSource().getDisplay()), createConstraint(row++, indent));
         }
         if (activity.getElapsed() != null) {
             formattedInfo.add(new JLabel("Duration: " + activity.getElapsed().toString()), createConstraint(row++, indent));
@@ -423,6 +427,9 @@ public class OpenTelemetryToolWindow {
             label.setToolTipText("Time spent before first response received");
             formattedInfo.add(label, createConstraint(row++, indent));
         }
+        if (activity.getRequestPath() != null) {
+            formattedInfo.add(createFilterLabel("Path", activity.getRequestPath()), createConstraint(row++, indent));
+        }
         if (activity.getTags() != null) {
             formattedInfo.add(createTitleLabel("Tags"), createConstraint(row++, 0));
             for (Map.Entry<String, String> entry : activity.getTags().entrySet()) {
@@ -435,6 +442,63 @@ public class OpenTelemetryToolWindow {
         for (Map.Entry<String, String> entry : activity.getTraceIds().entrySet()) {
             var label = createFilterLabel(entry.getKey(), entry.getValue());
             formattedInfo.add(label, createConstraint(row++, indent));
+        }
+
+        // Padding
+        {
+            GridBagConstraints c = createConstraint(10_000, 0);
+            c.weighty = 1;
+            formattedInfo.add(new JPanel(), c);
+        }
+
+        formattedInfo.revalidate();
+        formattedInfo.repaint();
+    }
+
+    private void updateFormattedDisplayForMetric(@NotNull Metric metric) {
+        // Show information about the telemetry
+        formattedInfo.removeAll();
+
+        int indent = 30; //Indentation for subfields
+
+        int row = 1;
+        if (metric.getName() != null) {
+            formattedInfo.add(createTitleLabel(metric.getName() + " (" + metric.getTemporality() + ")"), createConstraint(row++, 0));
+            formattedInfo.add(createFilterLabel("Name", metric.getName()), createConstraint(row++, indent));
+        }
+        if (metric.getDescription() != null) {
+            formattedInfo.add(createFilterLabel("Description", metric.getDescription()), createConstraint(row++, indent));
+        }
+        if (metric.getTemporality() != null) {
+            formattedInfo.add(createFilterLabel("Temporality", metric.getTemporality()), createConstraint(row++, indent));
+        }
+        if (metric.getMeterName() != null) {
+            formattedInfo.add(createFilterLabel("Meter", metric.getMeterName()), createConstraint(row++, indent));
+        }
+        if (metric.getUnit() != null) {
+            formattedInfo.add(createFilterLabel("Unit", metric.getUnit()), createConstraint(row++, indent));
+        }
+        if (metric.getLastPoint() != null) {
+            var point = metric.getLastPoint();
+            formattedInfo.add(createTitleLabel("Last Point"), createConstraint(row++, 0));
+            if (point.getLongSum() != null) {
+                formattedInfo.add(new JLabel("Long Sum: " + point.getLongSum()), createConstraint(row++, indent));
+            }
+            if (point.getDoubleSum() != null) {
+                formattedInfo.add(new JLabel("Double Sum: " + point.getDoubleSum()), createConstraint(row++, indent));
+            }
+            if (point.getLongGauge() != null) {
+                formattedInfo.add(new JLabel("Long Gauge: " + point.getLongGauge()), createConstraint(row++, indent));
+            }
+            if (point.getDoubleGauge() != null) {
+                formattedInfo.add(new JLabel("Double Gauge: " + point.getDoubleGauge()), createConstraint(row++, indent));
+            }
+            if (point.getHistogramCount() != null) {
+                formattedInfo.add(new JLabel("Histogram Count: " + point.getHistogramCount()), createConstraint(row++, indent));
+            }
+            if (point.getHistogramSum() != null) {
+                formattedInfo.add(new JLabel("Histogram Sum: " + point.getHistogramSum()), createConstraint(row++, indent));
+            }
         }
 
         // Padding

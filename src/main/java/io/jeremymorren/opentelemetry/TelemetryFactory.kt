@@ -3,7 +3,6 @@
 package io.jeremymorren.opentelemetry
 
 import com.intellij.openapi.diagnostic.Logger
-import io.jeremymorren.opentelemetry.listeners.DebugMessageListener
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -14,8 +13,8 @@ class TelemetryFactory {
     // We need to concatenate them before parsing
     private val currentValue: StringBuilder = StringBuilder()
 
-    public fun tryCreateFromDebugOutputLog(output: String): Telemetry? {
-        val openTelemetryLogPrefix = "{\"activity\":{\"traceId\":\""
+    fun tryCreateFromDebugOutputLog(output: String): TelemetryItem? {
+        val openTelemetryLogPrefix = "OpenTelemetry {\""
 
         val value = output.trimEnd()
 
@@ -29,12 +28,12 @@ class TelemetryFactory {
             return null
         }
 
-        val json = currentValue.toString()
+        val json = currentValue.toString().substring(openTelemetryLogPrefix.length - 2)
         currentValue.clear()
 
         return try {
-            val telemetry = Json.decodeFromString<TelemetryInfo>(json)
-            return Telemetry(formatJson(json), telemetry)
+            val telemetry = Json.decodeFromString<Telemetry>(json)
+            return TelemetryItem(formatJson(json), telemetry)
         } catch (e: SerializationException) {
             val logger = Logger.getInstance(TelemetryFactory::class.java)
             logger.error("Failed to parse telemetry log", e)

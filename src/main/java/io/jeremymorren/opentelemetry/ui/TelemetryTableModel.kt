@@ -1,7 +1,7 @@
 package io.jeremymorren.opentelemetry.ui
 
-import io.jeremymorren.opentelemetry.Activity
 import io.jeremymorren.opentelemetry.Telemetry
+import io.jeremymorren.opentelemetry.TelemetryItem
 import io.jeremymorren.opentelemetry.TelemetryType
 import io.jeremymorren.opentelemetry.utils.TimeSpan
 import java.time.Instant
@@ -14,10 +14,10 @@ class TelemetryTableModel : AbstractTableModel() {
         "timestamp", "duration", "type", "detail"
     )
     private val columnClass = arrayOf<Class<*>>(
-        Instant::class.java, TimeSpan::class.java, TelemetryType::class.java, Activity::class.java
+        Instant::class.java, TimeSpan::class.java, TelemetryType::class.java, Telemetry::class.java
     )
 
-    private val telemetries: MutableList<Telemetry> = ArrayList()
+    private val telemetries: MutableList<TelemetryItem> = ArrayList()
 
     override fun getColumnName(column: Int): String = columnNames[column]
 
@@ -33,22 +33,22 @@ class TelemetryTableModel : AbstractTableModel() {
             0 -> telemetry.timestamp
             1 -> telemetry.duration
             2 -> telemetry.type
-            3 -> telemetry.telemetry.activity
+            3 -> telemetry.telemetry
             else -> null
         }
     }
 
-    fun addRow(telemetry: Telemetry) {
+    fun addRow(telemetry: TelemetryItem) {
         telemetries.add(telemetry)
         this.fireTableRowsInserted(telemetries.size - 1, telemetries.size - 1)
     }
 
-    fun addRow(i: Int, telemetry: Telemetry) {
+    fun addRow(i: Int, telemetry: TelemetryItem) {
         telemetries.add(i, telemetry)
         this.fireTableRowsInserted(telemetries.size - 1, telemetries.size - 1)
     }
 
-    fun setRows(telemetries: List<Telemetry>) {
+    fun setRows(telemetries: List<TelemetryItem>) {
         val previousSize = this.telemetries.size
         this.telemetries.clear()
         this.fireTableRowsDeleted(0, max(0.0, (previousSize - 1).toDouble()).toInt())
@@ -56,7 +56,7 @@ class TelemetryTableModel : AbstractTableModel() {
         this.fireTableRowsInserted(0, max(0.0, (this.telemetries.size - 1).toDouble()).toInt())
     }
 
-    fun getRow(selectedRow: Int): Telemetry? {
+    fun getRow(selectedRow: Int): TelemetryItem? {
         if (selectedRow < 0) return null
         if (selectedRow >= this.rowCount) return null
         return telemetries[selectedRow]

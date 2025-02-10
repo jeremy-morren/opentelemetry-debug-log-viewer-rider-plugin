@@ -2,38 +2,56 @@
 
 package io.jeremymorren.opentelemetry
 
-import fleet.util.lowercaseLocaleAgnostic
 import io.jeremymorren.opentelemetry.utils.TimeSpan
+import kotlinx.datetime.Instant
+import kotlinx.datetime.toJavaInstant
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonIgnoreUnknownKeys
-import kotlinx.serialization.json.JsonObject
-import java.time.Duration
-import java.time.Instant
 import java.util.*
+import kotlin.time.toJavaDuration
 
-data class Telemetry(
+data class TelemetryItem(
     val json: String,
-    val telemetry: TelemetryInfo
+    val telemetry: Telemetry
 )
 {
-    val timestamp: Instant? = telemetry.activity.getStartTime()
-
-    val type: TelemetryType? = telemetry.activity.getType()
-
-    val duration: TimeSpan? = telemetry.activity.getElapsed()
-
     val lowerCaseJson: String = json.lowercase(Locale.getDefault())
 
-    val sql: String? = telemetry.activity.getDbQuery()
+    val type: TelemetryType? = telemetry.getType()
+
+    val timestamp: java.time.Instant? = telemetry.getTimestamp()?.toJavaInstant()
+
+    val duration: TimeSpan? = telemetry.activity?.getElapsed()
+
+    val sql: String? = telemetry.activity?.getDbQuery()
 }
 
 @Serializable
-data class TelemetryInfo(
-    val activity: Activity
-);
+@JsonIgnoreUnknownKeys
+data class Telemetry(
+    val activity: Activity? = null,
+    val metric: Metric? = null
+)
+{
+    fun getType(): TelemetryType? {
+        if (activity != null) {
+            return activity.getType()
+        }
+        if (metric != null) {
+            return TelemetryType.Metric
+        }
+        return null
+    }
+
+    fun getTimestamp(): Instant? {
+        val ts = activity?.startTime ?: metric?.lastPoint?.startTime
+        if (ts != null) {
+            return Instant.parse(ts)
+        }
+        return null
+    }
+}
 
 @Serializable
 @JsonIgnoreUnknownKeys
@@ -44,25 +62,17 @@ data class Activity(
     val parentSpanId: String? = null,
     val activityTraceFlags: String? = null,
     val traceStateString: String? = null,
-    val activitySourceName: String? = null,
-    val activitySourceVersion: String? = null,
+    val source: ActivitySource? = null,
     val displayName: String? = null,
     val kind: ActivityKind? = null,
     val startTime: String? = null,
     val duration: String? = null,
-    val tags: Map<String, String>? = null,
+    val tags: Map<String, String?>? = null,
     val operationName: String? = null,
     val statusCode: ActivityStatusCode? = null,
     val statusDescription: String? = null,
     val events: List<ActivityEvent>? = null,
 ) {
-    fun getStartTime(): Instant? {
-        if (startTime == null) {
-            return null
-        }
-        return Instant.parse(startTime)
-    }
-
     fun getElapsed() : TimeSpan? {
         if (duration == null) {
             return null
@@ -70,27 +80,19 @@ data class Activity(
         return TimeSpan(duration);
     }
 
-    private fun sourceLower(): String = activitySourceName?.lowercaseLocaleAgnostic() ?: "";
-
-    fun getType(): TelemetryType? {
-        if (activitySourceName == null) {
-            return null
-        }
+    fun getType(): TelemetryType {
         if (kind == ActivityKind.Server && getRequestPath() != null) {
-            return TelemetryType.Request;
+            return TelemetryType.Request
         }
         if (kind == ActivityKind.Client) {
-            return TelemetryType.Dependency;
+            return TelemetryType.Dependency
         }
-        if (kind == ActivityKind.Internal) {
-            return TelemetryType.Activity;
-        }
-        return null;
+        return TelemetryType.Activity
     }
 
     fun getTypeDisplay(): String {
-        val sb = StringBuilder();
-        sb.append(getType()?.name ?: "Unknown")
+        val sb = StringBuilder()
+        sb.append(getType().name)
         if (getSubType() != null) {
             sb.append(" - ")
             sb.append(getSubType())
@@ -98,7 +100,7 @@ data class Activity(
         return sb.toString();
     }
 
-    private fun getRequestPath(): String? {
+    fun getRequestPath(): String? {
         if (tags == null) return null;
         val sb = StringBuilder();
         sb.append(tags.getOrDefault("url.path", ""));
@@ -119,24 +121,16 @@ data class Activity(
 
     // Get the subtype of the activity (e.g. HTTP, SQL)
     private fun getSubType(): String? {
-        if (activitySourceName == null) {
+        if (source == null) {
             return null
         }
-        if (activitySourceName == "System.Net.Http") {
+        if (source.name == "System.Net.Http") {
             return "HTTP"
         }
-        if (sourceLower().contains("sql")) {
+        if (source.nameLower.contains("sql")) {
             return "SQL"
         }
         return null
-    }
-
-    // Get the activity source (name and version)
-    fun getActivitySource(): String? {
-        if (activitySourceVersion.isNullOrEmpty()) {
-            return activitySourceName
-        }
-        return "$activitySourceName ($activitySourceVersion)"
     }
 
     // Get the trace IDs in a map
@@ -157,15 +151,15 @@ data class Activity(
 
     // Gets time spent in the database (i.e. until first result is returned)
     fun getDbQueryTime(): TimeSpan? {
-        if (events == null || getStartTime() == null) {
+        if (events == null || startTime == null) {
             return null
         }
+        val startTs = Instant.parse(startTime)
+        // Find the event called "received-first-response"
         for (event in events) {
-            if (event.name == "received-first-response"
-                && event.getTimestamp() != null
-                && event.getTimestamp()!!.isAfter(getStartTime())) {
-                val duration = Duration.between(getStartTime(), event.getTimestamp())
-                return TimeSpan(duration)
+            if (event.name == "received-first-response" && event.getTimestamp() != null) {
+                val duration = event.getTimestamp()!! - startTs
+                return TimeSpan(duration.toJavaDuration())
             }
         }
         return null
@@ -206,18 +200,35 @@ data class Activity(
 }
 
 @Serializable
-data class ActivityEvent(
-    val name: String?,
-    val timestamp: String?,
-    val attributes: Map<String, String>?,
+@JsonIgnoreUnknownKeys
+data class ActivitySource(
+    val name: String,
+    val version: String? = null
 )
 {
-    fun getTimestamp() : Instant?
-    {
-        if (timestamp == null) {
-            return null
+    fun getDisplay(): String {
+        if (version == null) {
+            return name
         }
-        return Instant.parse(timestamp)
+        return "$name ($version)"
+    }
+
+    val nameLower: String = name.lowercase(Locale.ROOT)
+}
+
+@Serializable
+@JsonIgnoreUnknownKeys
+data class ActivityEvent(
+    val name: String? = null,
+    val timestamp: String? = null,
+    val attributes: Map<String, String>? = null,
+)
+{
+    fun getTimestamp(): Instant? {
+        if (timestamp != null) {
+            return Instant.parse(timestamp)
+        }
+        return null
     }
 }
 
@@ -247,13 +258,78 @@ enum class ActivityKind {
 
 /**
  * Telemetry type (determined from properties of the activity).
- * @property Activity The activity is a generic activity.
- * @property Request The activity is a server request (i.e. ASP.NET Core).
- * @property Dependency The activity is a dependency (e.g. HTTP, SQL).
+ * @property Activity The telemetry is a generic activity.
+ * @property Request The telemetry is a server request (i.e. ASP.NET Core).
+ * @property Dependency The telemetry is a dependency (e.g. HTTP, SQL).
+ * @property Metric The telemetry is a metric.
  */
 @Serializable
 enum class TelemetryType {
     Activity,
     Request,
-    Dependency
+    Dependency,
+    Metric
 }
+
+/**
+ * A metric.
+ */
+@Serializable
+@JsonIgnoreUnknownKeys
+data class Metric(
+    val metricType: String? = null,
+    val temporality: String? = null,
+    val name: String? = null,
+    val description: String? = null,
+    val unit: String? = null,
+    val meterName: String? = null,
+    val meterVersion: String? = null,
+    val meterTags:  Map<String,String?>? = null,
+    val points: List<MetricPoint>? = null,
+)
+{
+    val lastPoint: MetricPoint? = points?.lastOrNull()
+
+    fun getDetail(): String? {
+        val parts = mutableListOf<String>()
+        if (!name.isNullOrEmpty()) {
+            parts.add(name)
+        }
+        if (!description.isNullOrEmpty()) {
+            parts.add(description)
+        }
+        if (!meterName.isNullOrEmpty()) {
+            parts.add(meterName)
+        }
+        if (parts.size == 0) {
+            return null
+        }
+        return parts.joinToString(" - ")
+    }
+
+    fun getMeterDisplay(): String? {
+        if (meterName.isNullOrEmpty()) {
+            return null
+        }
+        if (meterVersion.isNullOrEmpty()) {
+            return meterName
+        }
+        return "$meterName ($meterVersion)"
+    }
+}
+
+/**
+ * A metric point.
+ */
+@Serializable
+@JsonIgnoreUnknownKeys
+data class MetricPoint(
+    val startTime: String? = null,
+    val endTime: String? = null,
+    val longSum: Long? = null,
+    val doubleSum: Double? = null,
+    val longGauge: Long? = null,
+    val doubleGauge: Double? = null,
+    val histogramCount: Long? = null,
+    val histogramSum: Double? = null,
+)

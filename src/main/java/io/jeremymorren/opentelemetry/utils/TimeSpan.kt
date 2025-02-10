@@ -1,5 +1,6 @@
 package io.jeremymorren.opentelemetry.utils
 
+import kotlinx.serialization.KSerializer
 import java.text.DecimalFormat
 import java.time.Duration
 
