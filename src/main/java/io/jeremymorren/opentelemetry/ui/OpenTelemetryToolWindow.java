@@ -32,12 +32,10 @@ import com.intellij.util.concurrency.AppExecutorUtil;
 import com.intellij.util.ui.JBUI;
 import com.jetbrains.rd.util.lifetime.Lifetime;
 import io.jeremymorren.opentelemetry.*;
-import io.jeremymorren.opentelemetry.settings.AppSettingState;
 import io.jeremymorren.opentelemetry.ui.components.*;
 import io.jeremymorren.opentelemetry.ui.renderers.InstantRenderer;
 import io.jeremymorren.opentelemetry.ui.renderers.TelemetryRenderer;
 import io.jeremymorren.opentelemetry.ui.renderers.TelemetryTypeRenderer;
-import kotlin.Unit;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -46,6 +44,7 @@ import java.awt.*;
 import java.awt.event.ItemEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.text.DecimalFormat;
 import java.time.Instant;
 import java.util.*;
 import java.util.List;
@@ -86,6 +85,13 @@ public class OpenTelemetryToolWindow {
     private ColorBox metricColorBox;
     private JCheckBox metricCheckBox;
     private JLabel metricCounter;
+    private ColorBox exceptionColorBox;
+    private JCheckBox exceptionCheckBox;
+    private JLabel exceptionCounter;
+    private ColorBox messageColorBox;
+    private JCheckBox messageCheckBox;
+    private JLabel messageCounter;
+    private JComponent exceptionPanel;
 
     @NotNull
     private final Project project;
@@ -96,12 +102,17 @@ public class OpenTelemetryToolWindow {
     private Editor jsonEditor;
     @NotNull
     private Editor sqlEditor;
+    @NotNull
+    private Editor exceptionEditor;
 
     @NotNull
     private Document jsonPreviewDocument;
 
     @NotNull
     private Document sqlPreviewDocument;
+
+    @NotNull
+    private Document exceptionViewDocument;
 
     @NotNull
     private final TelemetryTableModel telemetryTableModel;
@@ -177,12 +188,6 @@ public class OpenTelemetryToolWindow {
 
         builder = TextConsoleBuilderFactory.getInstance().createBuilder(project);
         builder.filters(AnalyzeStacktraceUtil.EP_NAME.getExtensions(project));
-
-        AppSettingState.getInstance().showFilteredIndicator.advise(lifetime, (v) -> {
-            this.logsTable.invalidate();
-            this.logsTable.repaint();
-            return Unit.INSTANCE;
-        });
     }
 
     private void selectTelemetry(@Nullable TelemetryItem telemetry) {
@@ -192,11 +197,14 @@ public class OpenTelemetryToolWindow {
         }
         updateJsonPreview(telemetry.getJson());
         updateSqlPreview(telemetry.getSql());
+        updateExceptionView(telemetry.getTelemetry().getLog());
 
         if (telemetry.getTelemetry().getActivity() != null)
             updateFormattedDisplayForActivity(telemetry.getTelemetry().getActivity());
         else if (telemetry.getTelemetry().getMetric() != null)
             updateFormattedDisplayForMetric(telemetry.getTelemetry().getMetric());
+        else if (telemetry.getTelemetry().getLog() != null)
+            updateFormattedDisplayForLogMessage(telemetry.getTelemetry().getLog());
     }
 
     @NotNull
@@ -237,20 +245,17 @@ public class OpenTelemetryToolWindow {
     }
 
     private void createUIComponents() {
-        activityColorBox = new ColorBox(JBColor.namedColor("OpenTelemetry.TelemetryColor.Activity", JBColor.orange));
-        dependencyColorBox = new ColorBox(JBColor.namedColor("OpenTelemetry.TelemetryColor.Request", JBColor.blue));
-        requestColorBox = new ColorBox(JBColor.namedColor("OpenTelemetry.TelemetryColor.Dependency", JBColor.green));
-        metricColorBox = new ColorBox(JBColor.namedColor("OpenTelemetry.TelemetryColor.Metric", JBColor.gray));
-
         toolbar = createToolbar();
         toolbar.setTargetComponent(mainPanel);
         toolbar.setVisible(false);
 
         jsonPreviewDocument = new LanguageTextField.SimpleDocumentCreator().createDocument("", JsonLanguage.INSTANCE, project);
         sqlPreviewDocument = new LanguageTextField.SimpleDocumentCreator().createDocument("", Language.findLanguageByID("SQL"), project);
+        exceptionViewDocument = new LanguageTextField.SimpleDocumentCreator().createDocument("", Language.ANY, project);
 
         jsonEditor = EditorFactory.getInstance().createViewer(jsonPreviewDocument, project, EditorKind.MAIN_EDITOR);
         sqlEditor = EditorFactory.getInstance().createViewer(sqlPreviewDocument, project, EditorKind.MAIN_EDITOR);
+        exceptionEditor = EditorFactory.getInstance().createViewer(exceptionViewDocument, project, EditorKind.MAIN_EDITOR);
 
         Editor[] editors = {jsonEditor, sqlEditor};
         for (Editor editor : editors) {
@@ -268,6 +273,14 @@ public class OpenTelemetryToolWindow {
 
         jsonPanel = jsonEditor.getComponent();
         sqlPanel = sqlEditor.getComponent();
+        exceptionPanel = exceptionEditor.getComponent();
+
+        metricColorBox = new ColorBox(JBColor.namedColor("OpenTelemetry.TelemetryColor.Metric", JBColor.gray));
+        exceptionColorBox = new ColorBox(JBColor.namedColor("OpenTelemetry.TelemetryColor.Exception", JBColor.red));
+        messageColorBox = new ColorBox(JBColor.namedColor("OpenTelemetry.TelemetryColor.Message", JBColor.orange));
+        dependencyColorBox = new ColorBox(JBColor.namedColor("OpenTelemetry.TelemetryColor.Request", JBColor.blue));
+        requestColorBox = new ColorBox(JBColor.namedColor("OpenTelemetry.TelemetryColor.Dependency", JBColor.green));
+        activityColorBox = new ColorBox(JBColor.namedColor("OpenTelemetry.TelemetryColor.Activity", JBColor.cyan));
     }
 
     @NotNull
@@ -329,13 +342,14 @@ public class OpenTelemetryToolWindow {
         telemetryCountPerType.put(telemetry.getType(), count);
 
         var text = count.toString();
+        var formatter = new DecimalFormat("0.0");
         if (count > 1_000_000)
         {
-            text = (count / 1_000_000) + "M";
+            text = formatter.format(count / 1_000_000.0) + "M";
         }
         else if (count > 1_000)
         {
-            text = (count / 1_000) + "K";
+            text = formatter.format(count / 1_000.0) + "K";
         }
 
         for (JLabel counter: telemetryTypesCounter)
@@ -347,19 +361,23 @@ public class OpenTelemetryToolWindow {
     }
 
     private void initTelemetryTypeFilters() {
-        activityCounter.putClientProperty("TelemetryType", TelemetryType.Activity);
+        metricCounter.putClientProperty("TelemetryType", TelemetryType.Metric);
+        exceptionCounter.putClientProperty("TelemetryType", TelemetryType.Exception);
+        messageCounter.putClientProperty("TelemetryType", TelemetryType.Message);
         dependencyCounter.putClientProperty("TelemetryType", TelemetryType.Dependency);
         requestCounter.putClientProperty("TelemetryType", TelemetryType.Request);
-        metricCounter.putClientProperty("TelemetryType", TelemetryType.Metric);
+        activityCounter.putClientProperty("TelemetryType", TelemetryType.Activity);
 
-        telemetryTypesCounter.addAll(Arrays.asList(activityCounter, dependencyCounter, requestCounter, metricCounter));
+        telemetryTypesCounter.addAll(Arrays.asList(metricCounter, exceptionCounter, messageCounter, dependencyCounter, requestCounter, activityCounter));
 
-        activityCheckBox.putClientProperty("TelemetryType", TelemetryType.Activity);
+        metricCheckBox.putClientProperty("TelemetryType", TelemetryType.Metric);
+        exceptionCheckBox.putClientProperty("TelemetryType", TelemetryType.Exception);
+        messageCheckBox.putClientProperty("TelemetryType", TelemetryType.Message);
         dependencyCheckBox.putClientProperty("TelemetryType", TelemetryType.Dependency);
         requestCheckBox.putClientProperty("TelemetryType", TelemetryType.Request);
-        metricCheckBox.putClientProperty("TelemetryType", TelemetryType.Metric);
+        activityCheckBox.putClientProperty("TelemetryType", TelemetryType.Activity);
 
-        for (JCheckBox checkBox: new JCheckBox[]{activityCheckBox, dependencyCheckBox, requestCheckBox, metricCheckBox})
+        for (JCheckBox checkBox: new JCheckBox[]{metricCheckBox, exceptionCheckBox, messageCheckBox, dependencyCheckBox, requestCheckBox, activityCheckBox})
         {
             var type = (TelemetryType) checkBox.getClientProperty("TelemetryType");
             checkBox.setSelected(openTelemetrySession.isTelemetryVisible(type));
@@ -370,9 +388,7 @@ public class OpenTelemetryToolWindow {
 
     private void updateJsonPreview(String json) {
         ApplicationManager.getApplication().runWriteAction(() -> jsonPreviewDocument.setText(json));
-
-        CodeFoldingManager.getInstance(ProjectManager.getInstance().getDefaultProject())
-                .updateFoldRegions(jsonEditor);
+        CodeFoldingManager.getInstance(ProjectManager.getInstance().getDefaultProject()).updateFoldRegions(jsonEditor);
     }
 
     private void updateSqlPreview(@Nullable String sql) {
@@ -384,11 +400,21 @@ public class OpenTelemetryToolWindow {
             return;
         }
         tabbedPane.setEnabledAt(2, true);
-
         ApplicationManager.getApplication().runWriteAction(() -> sqlPreviewDocument.setText(sql));
+        CodeFoldingManager.getInstance(ProjectManager.getInstance().getDefaultProject()).updateFoldRegions(sqlEditor);
+    }
 
-        CodeFoldingManager.getInstance(ProjectManager.getInstance().getDefaultProject())
-                .updateFoldRegions(jsonEditor);
+    private void updateExceptionView(@Nullable LogMessage message) {
+        if (message == null || message.getExceptionDisplay() == null) {
+            //No exception for this telemetry. Disable the exception tab and select the first tab
+            tabbedPane.setEnabledAt(3, false);
+            if (tabbedPane.getSelectedIndex() == 3)
+                tabbedPane.setSelectedIndex(0);
+            return;
+        }
+        tabbedPane.setEnabledAt(3, true);
+        ApplicationManager.getApplication().runWriteAction(() -> exceptionViewDocument.setText(message.getExceptionDisplay()));
+        CodeFoldingManager.getInstance(ProjectManager.getInstance().getDefaultProject()).updateFoldRegions(exceptionEditor);
     }
 
     private void updateFormattedDisplayForActivity(@NotNull Activity activity) {
@@ -408,7 +434,7 @@ public class OpenTelemetryToolWindow {
         formattedInfo.add(createTitleLabel(activity.getTypeDisplay()), createConstraint(row++, 0));
         if (activity.getSource() != null)
         {
-            formattedInfo.add(createFilterLabel("Source", activity.getSource().getDisplay()), createConstraint(row++, indent));
+            formattedInfo.add(createFilterLabel("Source", activity.getSource().getName()), createConstraint(row++, indent));
         }
         if (activity.getElapsed() != null) {
             formattedInfo.add(new JLabel("Duration: " + activity.getElapsed().toString()), createConstraint(row++, indent));
@@ -419,8 +445,8 @@ public class OpenTelemetryToolWindow {
         if (activity.getOperationName() != null) {
             formattedInfo.add(createFilterLabel("Operation", activity.getOperationName()), createConstraint(row++, indent));
         }
-        if (activity.getStatus() != null) {
-            formattedInfo.add(new JLabel("Status: " + activity.getStatus()), createConstraint(row++, indent));
+        if (activity.getErrorDisplay() != null) {
+            formattedInfo.add(createFilterLabel("Status", activity.getErrorDisplay()), createConstraint(row++, indent));
         }
         if (activity.getDbQueryTime() != null) {
             var label = new JLabel("DB Time: " + activity.getDbQueryTime());
@@ -510,6 +536,11 @@ public class OpenTelemetryToolWindow {
 
         formattedInfo.revalidate();
         formattedInfo.repaint();
+    }
+
+    private void updateFormattedDisplayForLogMessage(@NotNull LogMessage log) {
+        // Show information about the telemetry
+        formattedInfo.removeAll();
     }
 
     private JLabel createFilterLabel(String label, String value) {

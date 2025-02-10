@@ -1,4 +1,5 @@
 @file:OptIn(ExperimentalSerializationApi::class)
+@file:Suppress("unused")
 
 package io.jeremymorren.opentelemetry
 
@@ -31,12 +32,16 @@ data class TelemetryItem(
 @JsonIgnoreUnknownKeys
 data class Telemetry(
     val activity: Activity? = null,
-    val metric: Metric? = null
+    val metric: Metric? = null,
+    val log: LogMessage? = null
 )
 {
     fun getType(): TelemetryType? {
         if (activity != null) {
             return activity.getType()
+        }
+        if (log != null) {
+            return log.getType()
         }
         if (metric != null) {
             return TelemetryType.Metric
@@ -45,12 +50,31 @@ data class Telemetry(
     }
 
     fun getTimestamp(): Instant? {
-        val ts = activity?.startTime ?: metric?.lastPoint?.startTime
+        val ts = activity?.startTime ?: metric?.lastPoint?.startTime ?: log?.timestamp
         if (ts != null) {
             return Instant.parse(ts)
         }
         return null
     }
+}
+
+/**
+ * Telemetry type (determined from properties of the activity).
+ * @property Activity The telemetry is a generic activity.
+ * @property Request The telemetry is a server request (i.e. ASP.NET Core).
+ * @property Dependency The telemetry is a dependency (e.g. HTTP, SQL).
+ * @property Metric The telemetry is a metric.
+ * @property Message The telemetry is a log message.
+ * @property Exception The telemetry is a log message with an exception.
+ */
+@Serializable
+enum class TelemetryType {
+    Activity,
+    Request,
+    Dependency,
+    Metric,
+    Message,
+    Exception
 }
 
 @Serializable
@@ -69,19 +93,21 @@ data class Activity(
     val duration: String? = null,
     val tags: Map<String, String?>? = null,
     val operationName: String? = null,
-    val statusCode: ActivityStatusCode? = null,
+    val status: ActivityStatusCode? = null,
     val statusDescription: String? = null,
     val events: List<ActivityEvent>? = null,
 ) {
-    fun getElapsed() : TimeSpan? {
-        if (duration == null) {
-            return null
-        }
-        return TimeSpan(duration);
-    }
+    val detail: String? = createDetail()
+
+    val typeDisplay: String = createTypeDisplay()
+
+    val isError: Boolean =
+        status == ActivityStatusCode.Error
+                || tags?.containsKey("error.type") == true
+                || tags?.get("otel.status_code") == "ERROR"
 
     fun getType(): TelemetryType {
-        if (kind == ActivityKind.Server && getRequestPath() != null) {
+        if (kind == ActivityKind.Server && tags != null && tags.containsKey("url.path")) {
             return TelemetryType.Request
         }
         if (kind == ActivityKind.Client) {
@@ -90,7 +116,14 @@ data class Activity(
         return TelemetryType.Activity
     }
 
-    fun getTypeDisplay(): String {
+    fun getElapsed() : TimeSpan? {
+        if (duration == null) {
+            return null
+        }
+        return TimeSpan(duration);
+    }
+
+    private fun createTypeDisplay(): String {
         val sb = StringBuilder()
         sb.append(getType().name)
         if (getSubType() != null) {
@@ -109,7 +142,7 @@ data class Activity(
         return sb.toString();
     }
 
-    private fun getFullUrl(): String? = tags?.getOrDefault("url.full", null);
+    private fun getFullUrl(): String? = tags?.get("url.full");
 
     fun getDbQuery(): String? = (tags?.get("db.query.text") ?: tags?.get("db.statement"))?.replace("\r", "")
 
@@ -117,14 +150,14 @@ data class Activity(
 
     private fun getResponseStatusCode(): String? = tags?.get("http.response.status_code")
 
-    fun getStatus(): String? = statusDescription ?: tags?.get("error.type")
+    fun getErrorDisplay(): String? = tags?.get("error.type") ?: tags?.get("otel.status_description")
 
     // Get the subtype of the activity (e.g. HTTP, SQL)
     private fun getSubType(): String? {
         if (source == null) {
             return null
         }
-        if (source.name == "System.Net.Http") {
+        if (source.nameLower.contains("http")) {
             return "HTTP"
         }
         if (source.nameLower.contains("sql")) {
@@ -157,28 +190,46 @@ data class Activity(
         val startTs = Instant.parse(startTime)
         // Find the event called "received-first-response"
         for (event in events) {
-            if (event.name == "received-first-response" && event.getTimestamp() != null) {
-                val duration = event.getTimestamp()!! - startTs
+            val eventTs = event.getTimestamp()
+            if (event.name == "received-first-response" && eventTs != null) {
+                val duration = eventTs - startTs
                 return TimeSpan(duration.toJavaDuration())
             }
         }
         return null
     }
 
-    fun getDetail(): String? {
+    private fun createDetail(): String? {
         val parts = mutableListOf<String>()
         if (getSubType() != null) {
             parts.add(getSubType()!!);
         }
-        // SqlClient sends the database name as the display name (which is not useful)
-        if (displayName != null && displayName != getDbName()) {
-            parts.add(displayName)
+        // If the subtype is not known, show the source name
+        if (getSubType() == null && source != null) {
+            parts.add(source.name)
         }
+        if (!displayName.isNullOrEmpty()) {
+            // SqlClient sends the database name as the display name (which is not useful)
+            if (displayName != getDbName()) {
+                parts.add(displayName)
+            }
+            //If the request does not match a controller, display name will only be method
+            //For those, add the request path to the detail
+            if (getType() == TelemetryType.Request && !displayName.contains(' ')) {
+                parts.add(getRequestPath()!!)
+            }
+        }
+
         if (getResponseStatusCode() != null) {
             parts.add(getResponseStatusCode()!!)
         }
-        if (statusCode == ActivityStatusCode.Error && getStatus() != null) {
-            parts.add(getStatus()!!)
+        if (isError) {
+            if (statusDescription != null) {
+                parts.add(statusDescription)
+            }
+            if (getErrorDisplay() != null) {
+                parts.add(getErrorDisplay()!!)
+            }
         }
         if (getDbQuery() != null) {
             parts.add(getDbQuery()!!)
@@ -206,13 +257,6 @@ data class ActivitySource(
     val version: String? = null
 )
 {
-    fun getDisplay(): String {
-        if (version == null) {
-            return name
-        }
-        return "$name ($version)"
-    }
-
     val nameLower: String = name.lowercase(Locale.ROOT)
 }
 
@@ -224,12 +268,7 @@ data class ActivityEvent(
     val attributes: Map<String, String>? = null,
 )
 {
-    fun getTimestamp(): Instant? {
-        if (timestamp != null) {
-            return Instant.parse(timestamp)
-        }
-        return null
-    }
+    fun getTimestamp(): Instant? = timestamp?.let { Instant.parse(it) }
 }
 
 /**
@@ -257,21 +296,6 @@ enum class ActivityKind {
 }
 
 /**
- * Telemetry type (determined from properties of the activity).
- * @property Activity The telemetry is a generic activity.
- * @property Request The telemetry is a server request (i.e. ASP.NET Core).
- * @property Dependency The telemetry is a dependency (e.g. HTTP, SQL).
- * @property Metric The telemetry is a metric.
- */
-@Serializable
-enum class TelemetryType {
-    Activity,
-    Request,
-    Dependency,
-    Metric
-}
-
-/**
  * A metric.
  */
 @Serializable
@@ -285,12 +309,14 @@ data class Metric(
     val meterName: String? = null,
     val meterVersion: String? = null,
     val meterTags:  Map<String,String?>? = null,
-    val points: List<MetricPoint>? = null,
+    val points: List<MetricPoint>? = null
 )
 {
     val lastPoint: MetricPoint? = points?.lastOrNull()
 
-    fun getDetail(): String? {
+    val detail: String? = createDetail()
+
+    private fun createDetail(): String? {
         val parts = mutableListOf<String>()
         if (!name.isNullOrEmpty()) {
             parts.add(name)
@@ -333,3 +359,68 @@ data class MetricPoint(
     val histogramCount: Long? = null,
     val histogramSum: Double? = null,
 )
+
+@Serializable
+@JsonIgnoreUnknownKeys
+data class LogMessage(
+    val body: String? = null,
+    val logLevel: LogLevel? = null,
+    val timestamp: String? = null,
+    val exception: ExceptionInfo? = null,
+    val attributes: Map<String, String>? = null
+)
+{
+    val formattedMessage: String? = createFormattedMessage()
+
+    val exceptionDisplay: String? =
+        if (exception?.display != null) {
+            "${createFormattedMessage()}\n\n${exception.display}".replace("\r", "")
+        } else { null }
+
+    fun getType(): TelemetryType {
+        if (exception != null) {
+            return TelemetryType.Exception
+        }
+        return TelemetryType.Message
+    }
+
+    private fun createFormattedMessage(): String? {
+        if (logLevel == null || body == null) {
+            return null
+        }
+        val level = when(logLevel) {
+            LogLevel.Trace -> "VRB"
+            LogLevel.Debug -> "DBG"
+            LogLevel.Information -> "INF"
+            LogLevel.Warning -> "WRN"
+            LogLevel.Error -> "ERR"
+            LogLevel.Critical -> "FTL"
+            else -> null
+        }
+        var msg = "[$level] $body";
+        for ((key, value) in attributes ?: emptyMap()) {
+            msg = msg.replace("{$key}", value, true)
+        }
+        return msg
+    }
+}
+
+@Serializable
+@JsonIgnoreUnknownKeys
+data class ExceptionInfo(
+    val message: String? = null,
+    val display: String? = null,
+    val type: String? = null,
+    val innerException: ExceptionInfo? = null
+)
+
+@Serializable
+enum class LogLevel {
+    Trace,
+    Debug,
+    Information,
+    Warning,
+    Error,
+    Critical,
+    None
+}

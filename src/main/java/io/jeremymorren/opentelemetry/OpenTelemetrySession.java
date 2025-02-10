@@ -29,8 +29,6 @@ public class OpenTelemetrySession {
     @NotNull
     private final List<TelemetryItem> filteredTelemetries = new ArrayList<>();
     @NotNull
-    private final Set<TelemetryType> visibleTelemetryTypes = new HashSet<>(TelemetryType.getEntries());
-    @NotNull
     private final TelemetryFactory telemetryFactory = new TelemetryFactory();
     @NotNull
     private final Lifetime lifetime;
@@ -79,14 +77,11 @@ public class OpenTelemetrySession {
     }
 
     public boolean isTelemetryVisible(@NotNull TelemetryType telemetryType) {
-        return this.visibleTelemetryTypes.contains(telemetryType);
+        return projectSettingsState.getTelemetryVisible(telemetryType);
     }
 
     public void setTelemetryVisible(@NotNull TelemetryType telemetryType, boolean visible) {
-        if (visible)
-            this.visibleTelemetryTypes.add(telemetryType);
-        else
-            this.visibleTelemetryTypes.remove(telemetryType);
+        projectSettingsState.setTelemetryVisible(telemetryType, visible);
         updateFilteredTelemetries();
     }
 
@@ -166,7 +161,8 @@ public class OpenTelemetrySession {
     }
 
     private boolean isTelemetryVisible(@NotNull TelemetryItem telemetry) {
-        if (telemetry.getType() != null && !visibleTelemetryTypes.contains(telemetry.getType()))
+        var type = telemetry.getType();
+        if (type != null && !projectSettingsState.getTelemetryVisible(type))
             return false;
         for (String filteredLog : projectSettingsState.filteredLogs.getValue()) {
             if (projectSettingsState.caseInsensitiveFiltering.getValue()) {

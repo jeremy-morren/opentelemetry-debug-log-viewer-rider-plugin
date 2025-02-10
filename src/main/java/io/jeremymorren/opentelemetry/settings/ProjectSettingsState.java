@@ -9,6 +9,7 @@ import com.intellij.util.xmlb.XmlSerializerUtil;
 import com.intellij.util.xmlb.annotations.OptionTag;
 import com.jetbrains.rd.util.lifetime.LifetimeDefinition;
 import com.jetbrains.rd.util.reactive.Property;
+import io.jeremymorren.opentelemetry.TelemetryType;
 import io.jeremymorren.opentelemetry.settings.converters.BooleanPropertyConverter;
 import io.jeremymorren.opentelemetry.settings.converters.StringArrayPropertyConverter;
 import kotlin.Unit;
@@ -27,6 +28,20 @@ public class ProjectSettingsState implements PersistentStateComponentWithModific
     public final Property<Boolean> caseInsensitiveFiltering = new Property<>(false);
     @OptionTag(converter = StringArrayPropertyConverter.class)
     public final Property<String[]> filteredLogs = new Property<>(new String[0]);
+
+    // Filters
+    @OptionTag(converter = BooleanPropertyConverter.class)
+    public final Property<Boolean> showMetrics = new Property<>(true);
+    @OptionTag(converter = BooleanPropertyConverter.class)
+    public final Property<Boolean> showExceptions = new Property<>(true);
+    @OptionTag(converter = BooleanPropertyConverter.class)
+    public final Property<Boolean> showMessages = new Property<>(true);
+    @OptionTag(converter = BooleanPropertyConverter.class)
+    public final Property<Boolean> showDependencies = new Property<>(true);
+    @OptionTag(converter = BooleanPropertyConverter.class)
+    public final Property<Boolean> showRequests = new Property<>(true);
+    @OptionTag(converter = BooleanPropertyConverter.class)
+    public final Property<Boolean> showActivities = new Property<>(true);
 
     public ProjectSettingsState() {
         registerAllPropertyToIncrementTrackerOnChanges(this);
@@ -63,5 +78,28 @@ public class ProjectSettingsState implements PersistentStateComponentWithModific
     @Override
     public long getStateModificationCount() {
         return this.tracker.getModificationCount();
+    }
+
+
+    public Boolean getTelemetryVisible(TelemetryType type) {
+        return switch (type) {
+            case Metric -> showMetrics.getValue();
+            case Exception -> showExceptions.getValue();
+            case Message -> showMessages.getValue();
+            case Dependency -> showDependencies.getValue();
+            case Request -> showRequests.getValue();
+            case Activity -> showActivities.getValue();
+        };
+    }
+
+    public void setTelemetryVisible(TelemetryType type, boolean value) {
+        switch (type) {
+            case Metric -> showMetrics.setValue(value);
+            case Exception -> showExceptions.setValue(value);
+            case Message -> showMessages.setValue(value);
+            case Dependency -> showDependencies.setValue(value);
+            case Request -> showRequests.setValue(value);
+            case Activity -> showActivities.setValue(value);
+        }
     }
 }
