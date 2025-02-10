@@ -364,17 +364,35 @@ data class MetricPoint(
 @JsonIgnoreUnknownKeys
 data class LogMessage(
     val body: String? = null,
+    val formattedMessage: String? = null,
     val logLevel: LogLevel? = null,
     val timestamp: String? = null,
     val exception: ExceptionInfo? = null,
-    val attributes: Map<String, String>? = null
+    val attributes: Map<String, String?>? = null,
+    val traceId: String? = null,
+    val spanId: String? = null,
+    val categoryName: String? = null,
+    val eventId: EventId? = null,
+    val resource: Resource? = null
 )
 {
-    val formattedMessage: String? = createFormattedMessage()
+    val displayMessage: String? = createDisplayMessage()
+
+    fun getTraceIds(): Map<String, String>? {
+        val traceIds = mutableMapOf<String, String>()
+        if (traceId != null)
+            traceIds["TraceID"] = traceId
+        if (spanId != null)
+            traceIds["SpanID"] = spanId
+        if (traceIds.isEmpty()) {
+            return null
+        }
+        return traceIds
+    }
 
     val exceptionDisplay: String? =
         if (exception?.display != null) {
-            "${createFormattedMessage()}\n\n${exception.display}".replace("\r", "")
+            "${createDisplayMessage()}\n\n${exception.display}".replace("\r", "")
         } else { null }
 
     fun getType(): TelemetryType {
@@ -384,7 +402,7 @@ data class LogMessage(
         return TelemetryType.Message
     }
 
-    private fun createFormattedMessage(): String? {
+    private fun createDisplayMessage(): String? {
         if (logLevel == null || body == null) {
             return null
         }
@@ -399,7 +417,7 @@ data class LogMessage(
         }
         var msg = "[$level] $body";
         for ((key, value) in attributes ?: emptyMap()) {
-            msg = msg.replace("{$key}", value, true)
+            msg = msg.replace("{$key}", value ?: "\$null", true)
         }
         return msg
     }
@@ -412,6 +430,19 @@ data class ExceptionInfo(
     val display: String? = null,
     val type: String? = null,
     val innerException: ExceptionInfo? = null
+)
+
+@Serializable
+@JsonIgnoreUnknownKeys
+data class EventId(
+    val id: Int,
+    val name: String? = null
+)
+
+@Serializable
+@JsonIgnoreUnknownKeys
+data class Resource(
+    val attributes: Map<String, String>? = null
 )
 
 @Serializable

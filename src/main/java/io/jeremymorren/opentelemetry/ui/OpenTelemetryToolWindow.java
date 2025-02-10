@@ -541,6 +541,70 @@ public class OpenTelemetryToolWindow {
     private void updateFormattedDisplayForLogMessage(@NotNull LogMessage log) {
         // Show information about the telemetry
         formattedInfo.removeAll();
+
+        int indent = 30; //Indentation for subfields
+        int row = 1;
+        formattedInfo.add(createTitleLabel(log.getType().toString()), createConstraint(row++, 0));
+        if (log.getDisplayMessage() != null)
+        {
+            formattedInfo.add(createFilterLabel("Message", log.getDisplayMessage()), createConstraint(row++, indent));
+        }
+        if (log.getLogLevel() != null)
+        {
+            formattedInfo.add(createFilterLabel("Level", log.getLogLevel().toString()), createConstraint(row++, indent));
+        }
+        if (log.getCategoryName() != null)
+        {
+            formattedInfo.add(createFilterLabel("Category", log.getCategoryName()), createConstraint(row++, indent));
+        }
+        if (log.getEventId() != null)
+        {
+            formattedInfo.add(createFilterLabel("EventId.Id", Integer.toString(log.getEventId().getId())), createConstraint(row++, indent));
+            if (log.getEventId().getName() != null)
+            {
+                formattedInfo.add(createFilterLabel("EventId.Name", log.getEventId().getName()), createConstraint(row++, indent));
+            }
+        }
+        if (log.getException() != null) {
+            if (log.getException().getType() != null)
+            {
+                formattedInfo.add(createFilterLabel("Exception Type", log.getException().getType()), createConstraint(row++, indent));
+            }
+            if (log.getException().getMessage() != null)
+            {
+                formattedInfo.add(createFilterLabel("Exception Message", log.getException().getMessage()), createConstraint(row++, indent));
+            }
+        }
+        if (log.getTraceIds() != null)
+        {
+            formattedInfo.add(createTitleLabel("Trace"), createConstraint(row++, 0));
+            for (Map.Entry<String, String> entry : log.getTraceIds().entrySet()) {
+                var label = createFilterLabel(entry.getKey(), entry.getValue());
+                formattedInfo.add(label, createConstraint(row++, indent));
+            }
+        }
+        if (log.getAttributes() != null)
+        {
+            formattedInfo.add(createTitleLabel("Attributes"), createConstraint(row++, 0));
+            for (Map.Entry<String, String> entry : log.getAttributes().entrySet()) {
+                var value = entry.getValue();
+                if (value == null) {
+                    value = "";
+                }
+                var label = createFilterLabel(entry.getKey(), value);
+                formattedInfo.add(label, createConstraint(row++, indent));
+            }
+        }
+
+        // Padding
+        {
+            GridBagConstraints c = createConstraint(10_000, 0);
+            c.weighty = 1;
+            formattedInfo.add(new JPanel(), c);
+        }
+
+        formattedInfo.revalidate();
+        formattedInfo.repaint();
     }
 
     private JLabel createFilterLabel(String label, String value) {

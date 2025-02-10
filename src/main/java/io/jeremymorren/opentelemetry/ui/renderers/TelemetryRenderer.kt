@@ -38,7 +38,7 @@ class TelemetryRenderer : TelemetryRendererBase() {
             super.setText(value.metric.detail)
         }
         if (value.log != null) {
-            super.setText(value.log.formattedMessage)
+            super.setText(value.log.displayMessage)
             val foreGround = JBColor.namedColor("OpenTelemetry.SeverityLevel.Default", JBColor.foreground())
             when (value.log.logLevel) {
                 LogLevel.Warning -> {
