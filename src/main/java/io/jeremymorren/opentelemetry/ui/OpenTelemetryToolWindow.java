@@ -196,15 +196,9 @@ public class OpenTelemetryToolWindow {
             return;
         }
         updateJsonPreview(telemetry.getJson());
-        updateSqlPreview(telemetry.getSql());
+        updateSqlPreview(telemetry.getTelemetry().getSql());
         updateExceptionView(telemetry.getTelemetry().getLog());
-
-        if (telemetry.getTelemetry().getActivity() != null)
-            updateFormattedDisplayForActivity(telemetry.getTelemetry().getActivity());
-        else if (telemetry.getTelemetry().getMetric() != null)
-            updateFormattedDisplayForMetric(telemetry.getTelemetry().getMetric());
-        else if (telemetry.getTelemetry().getLog() != null)
-            updateFormattedDisplayForLogMessage(telemetry.getTelemetry().getLog());
+        updateFormattedDisplay(telemetry.getTelemetry());
     }
 
     @NotNull
@@ -335,11 +329,12 @@ public class OpenTelemetryToolWindow {
 
     private void updateTelemetryTypeCounter(@Nullable TelemetryItem telemetry)
     {
-        if (telemetry == null || telemetry.getType() == null)
-            return;
-        var count = telemetryCountPerType.getOrDefault(telemetry.getType(), 0);
+        if (telemetry == null) return;
+        var type = telemetry.getTelemetry().getType();
+        if (type == null) return;
+        var count = telemetryCountPerType.getOrDefault(type, 0);
         count++;
-        telemetryCountPerType.put(telemetry.getType(), count);
+        telemetryCountPerType.put(type, count);
 
         var text = count.toString();
         var formatter = new DecimalFormat("0.0");
@@ -355,8 +350,10 @@ public class OpenTelemetryToolWindow {
         for (JLabel counter: telemetryTypesCounter)
         {
             TelemetryType telemetryType = (TelemetryType) counter.getClientProperty("TelemetryType");
-            if (telemetryType == telemetry.getType())
+            if (telemetryType == type) {
                 counter.setText(text);
+                break;
+            }
         }
     }
 
@@ -417,181 +414,143 @@ public class OpenTelemetryToolWindow {
         CodeFoldingManager.getInstance(ProjectManager.getInstance().getDefaultProject()).updateFoldRegions(exceptionEditor);
     }
 
-    private void updateFormattedDisplayForActivity(@NotNull Activity activity) {
+    private void updateFormattedDisplay(@NotNull Telemetry telemetry) {
         // Show information about the telemetry
         formattedInfo.removeAll();
 
         int indent = 30; //Indentation for subfields
 
         int row = 1;
-        if (activity.getRootId() != null) {
-            //Add root id
-            formattedInfo.add(createTitleLabel("RootId"), createConstraint(row++, 0));
-            formattedInfo.add(createFilterLabel("RootId", activity.getRootId()), createConstraint(row++, indent));
-        }
 
-        //Show activity information
-        formattedInfo.add(createTitleLabel(activity.getTypeDisplay()), createConstraint(row++, 0));
-        if (activity.getSource() != null)
-        {
-            formattedInfo.add(createFilterLabel("Source", activity.getSource().getName()), createConstraint(row++, indent));
-        }
-        if (activity.getElapsed() != null) {
-            formattedInfo.add(new JLabel("Duration: " + activity.getElapsed().toString()), createConstraint(row++, indent));
-        }
-        if (activity.getDisplayName() != null) {
-            formattedInfo.add(createFilterLabel("Display name", activity.getDisplayName()), createConstraint(row++, indent));
-        }
-        if (activity.getOperationName() != null) {
-            formattedInfo.add(createFilterLabel("Operation", activity.getOperationName()), createConstraint(row++, indent));
-        }
-        if (activity.getErrorDisplay() != null) {
-            formattedInfo.add(createFilterLabel("Status", activity.getErrorDisplay()), createConstraint(row++, indent));
-        }
-        if (activity.getDbQueryTime() != null) {
-            var label = new JLabel("DB Time: " + activity.getDbQueryTime());
-            label.setToolTipText("Time spent before first response received");
-            formattedInfo.add(label, createConstraint(row++, indent));
-        }
-        if (activity.getRequestPath() != null) {
-            formattedInfo.add(createFilterLabel("Path", activity.getRequestPath()), createConstraint(row++, indent));
-        }
-        if (activity.getTags() != null) {
-            formattedInfo.add(createTitleLabel("Tags"), createConstraint(row++, 0));
-            for (Map.Entry<String, String> entry : activity.getTags().entrySet()) {
-                var label = createFilterLabel(entry.getKey(), entry.getValue());
+        if (telemetry.getActivity() != null) {
+            var activity = telemetry.getActivity();
+
+            //Show activity information
+            formattedInfo.add(createTitleLabel(activity.getTypeDisplay()), createConstraint(row++, 0));
+            if (activity.getSource() != null && activity.getType() == TelemetryType.Activity) {
+                formattedInfo.add(createFilterLabel("Source", activity.getSource().getName()), createConstraint(row++, indent));
+            }
+            if (activity.getDuration() != null) {
+                formattedInfo.add(new JLabel("Duration: " + activity.getDuration().toString()), createConstraint(row++, indent));
+            }
+            if (activity.getDisplayName() != null) {
+                formattedInfo.add(createFilterLabel("Display name", activity.getDisplayName()), createConstraint(row++, indent));
+            }
+            if (activity.getOperationName() != null) {
+                formattedInfo.add(createFilterLabel("Operation", activity.getOperationName()), createConstraint(row++, indent));
+            }
+            if (activity.getErrorDisplay() != null) {
+                formattedInfo.add(createFilterLabel("Status", activity.getErrorDisplay()), createConstraint(row++, indent));
+            }
+            if (activity.getDbQueryTime() != null) {
+                var label = new JLabel("DB Time: " + activity.getDbQueryTime());
+                label.setToolTipText("Time spent before first response received");
                 formattedInfo.add(label, createConstraint(row++, indent));
             }
-        }
-        //Add trace information
-        formattedInfo.add(createTitleLabel("Trace"), createConstraint(row++, 0));
-        for (Map.Entry<String, String> entry : activity.getTraceIds().entrySet()) {
-            var label = createFilterLabel(entry.getKey(), entry.getValue());
-            formattedInfo.add(label, createConstraint(row++, indent));
-        }
-
-        // Padding
-        {
-            GridBagConstraints c = createConstraint(10_000, 0);
-            c.weighty = 1;
-            formattedInfo.add(new JPanel(), c);
-        }
-
-        formattedInfo.revalidate();
-        formattedInfo.repaint();
-    }
-
-    private void updateFormattedDisplayForMetric(@NotNull Metric metric) {
-        // Show information about the telemetry
-        formattedInfo.removeAll();
-
-        int indent = 30; //Indentation for subfields
-
-        int row = 1;
-        if (metric.getName() != null) {
-            formattedInfo.add(createTitleLabel(metric.getName() + " (" + metric.getTemporality() + ")"), createConstraint(row++, 0));
-            formattedInfo.add(createFilterLabel("Name", metric.getName()), createConstraint(row++, indent));
-        }
-        if (metric.getDescription() != null) {
-            formattedInfo.add(createFilterLabel("Description", metric.getDescription()), createConstraint(row++, indent));
-        }
-        if (metric.getTemporality() != null) {
-            formattedInfo.add(createFilterLabel("Temporality", metric.getTemporality()), createConstraint(row++, indent));
-        }
-        if (metric.getMeterName() != null) {
-            formattedInfo.add(createFilterLabel("Meter", metric.getMeterName()), createConstraint(row++, indent));
-        }
-        if (metric.getUnit() != null) {
-            formattedInfo.add(createFilterLabel("Unit", metric.getUnit()), createConstraint(row++, indent));
-        }
-        if (metric.getLastPoint() != null) {
-            var point = metric.getLastPoint();
-            formattedInfo.add(createTitleLabel("Last Point"), createConstraint(row++, 0));
-            if (point.getLongSum() != null) {
-                formattedInfo.add(new JLabel("Long Sum: " + point.getLongSum()), createConstraint(row++, indent));
+            if (activity.getRequestPath() != null) {
+                formattedInfo.add(createFilterLabel("Path", activity.getRequestPath()), createConstraint(row++, indent));
             }
-            if (point.getDoubleSum() != null) {
-                formattedInfo.add(new JLabel("Double Sum: " + point.getDoubleSum()), createConstraint(row++, indent));
-            }
-            if (point.getLongGauge() != null) {
-                formattedInfo.add(new JLabel("Long Gauge: " + point.getLongGauge()), createConstraint(row++, indent));
-            }
-            if (point.getDoubleGauge() != null) {
-                formattedInfo.add(new JLabel("Double Gauge: " + point.getDoubleGauge()), createConstraint(row++, indent));
-            }
-            if (point.getHistogramCount() != null) {
-                formattedInfo.add(new JLabel("Histogram Count: " + point.getHistogramCount()), createConstraint(row++, indent));
-            }
-            if (point.getHistogramSum() != null) {
-                formattedInfo.add(new JLabel("Histogram Sum: " + point.getHistogramSum()), createConstraint(row++, indent));
-            }
-        }
-
-        // Padding
-        {
-            GridBagConstraints c = createConstraint(10_000, 0);
-            c.weighty = 1;
-            formattedInfo.add(new JPanel(), c);
-        }
-
-        formattedInfo.revalidate();
-        formattedInfo.repaint();
-    }
-
-    private void updateFormattedDisplayForLogMessage(@NotNull LogMessage log) {
-        // Show information about the telemetry
-        formattedInfo.removeAll();
-
-        int indent = 30; //Indentation for subfields
-        int row = 1;
-        formattedInfo.add(createTitleLabel(log.getType().toString()), createConstraint(row++, 0));
-        if (log.getDisplayMessage() != null)
-        {
-            formattedInfo.add(createFilterLabel("Message", log.getDisplayMessage()), createConstraint(row++, indent));
-        }
-        if (log.getLogLevel() != null)
-        {
-            formattedInfo.add(createFilterLabel("Level", log.getLogLevel().toString()), createConstraint(row++, indent));
-        }
-        if (log.getCategoryName() != null)
-        {
-            formattedInfo.add(createFilterLabel("Category", log.getCategoryName()), createConstraint(row++, indent));
-        }
-        if (log.getEventId() != null)
-        {
-            formattedInfo.add(createFilterLabel("EventId.Id", Integer.toString(log.getEventId().getId())), createConstraint(row++, indent));
-            if (log.getEventId().getName() != null)
-            {
-                formattedInfo.add(createFilterLabel("EventId.Name", log.getEventId().getName()), createConstraint(row++, indent));
-            }
-        }
-        if (log.getException() != null) {
-            if (log.getException().getType() != null)
-            {
-                formattedInfo.add(createFilterLabel("Exception Type", log.getException().getType()), createConstraint(row++, indent));
-            }
-            if (log.getException().getMessage() != null)
-            {
-                formattedInfo.add(createFilterLabel("Exception Message", log.getException().getMessage()), createConstraint(row++, indent));
-            }
-        }
-        if (log.getTraceIds() != null)
-        {
-            formattedInfo.add(createTitleLabel("Trace"), createConstraint(row++, 0));
-            for (Map.Entry<String, String> entry : log.getTraceIds().entrySet()) {
-                var label = createFilterLabel(entry.getKey(), entry.getValue());
-                formattedInfo.add(label, createConstraint(row++, indent));
-            }
-        }
-        if (log.getAttributes() != null)
-        {
-            formattedInfo.add(createTitleLabel("Attributes"), createConstraint(row++, 0));
-            for (Map.Entry<String, String> entry : log.getAttributes().entrySet()) {
-                var value = entry.getValue();
-                if (value == null) {
-                    value = "";
+            if (activity.getFormattedTags() != null) {
+                formattedInfo.add(createTitleLabel("Tags"), createConstraint(row++, 0));
+                for (Map.Entry<String, String> entry : activity.getFormattedTags().entrySet()) {
+                    var label = createFilterLabel(entry.getKey(), entry.getValue());
+                    formattedInfo.add(label, createConstraint(row++, indent));
                 }
-                var label = createFilterLabel(entry.getKey(), value);
+            }
+        }
+        if (telemetry.getMetric() != null) {
+            var metric = telemetry.getMetric();
+            if (metric.getName() != null) {
+                formattedInfo.add(createTitleLabel(metric.getName() + " (" + metric.getTemporality() + ")"), createConstraint(row++, 0));
+                formattedInfo.add(createFilterLabel("Name", metric.getName()), createConstraint(row++, indent));
+            }
+            if (metric.getDescription() != null) {
+                formattedInfo.add(createFilterLabel("Description", metric.getDescription()), createConstraint(row++, indent));
+            }
+            if (metric.getTemporality() != null) {
+                formattedInfo.add(createFilterLabel("Temporality", metric.getTemporality()), createConstraint(row++, indent));
+            }
+            if (metric.getMeterName() != null) {
+                formattedInfo.add(createFilterLabel("Meter", metric.getMeterName()), createConstraint(row++, indent));
+            }
+            if (metric.getUnit() != null) {
+                formattedInfo.add(createFilterLabel("Unit", metric.getUnit()), createConstraint(row++, indent));
+            }
+            if (metric.getLastPoint() != null) {
+                var point = metric.getLastPoint();
+                formattedInfo.add(createTitleLabel("Last Point"), createConstraint(row++, 0));
+                if (point.getLongSum() != null) {
+                    formattedInfo.add(new JLabel("Long Sum: " + point.getLongSum()), createConstraint(row++, indent));
+                }
+                if (point.getDoubleSum() != null) {
+                    formattedInfo.add(new JLabel("Double Sum: " + point.getDoubleSum()), createConstraint(row++, indent));
+                }
+                if (point.getLongGauge() != null) {
+                    formattedInfo.add(new JLabel("Long Gauge: " + point.getLongGauge()), createConstraint(row++, indent));
+                }
+                if (point.getDoubleGauge() != null) {
+                    formattedInfo.add(new JLabel("Double Gauge: " + point.getDoubleGauge()), createConstraint(row++, indent));
+                }
+                if (point.getHistogramCount() != null) {
+                    formattedInfo.add(new JLabel("Histogram Count: " + point.getHistogramCount()), createConstraint(row++, indent));
+                }
+                if (point.getHistogramSum() != null) {
+                    formattedInfo.add(new JLabel("Histogram Sum: " + point.getHistogramSum()), createConstraint(row++, indent));
+                }
+            }
+        }
+        if (telemetry.getLog() != null) {
+            var log = telemetry.getLog();
+            formattedInfo.add(createTitleLabel(log.getType().toString()), createConstraint(row++, 0));
+            if (log.getDisplayMessage() != null)
+            {
+                formattedInfo.add(createFilterLabel("Message", log.getDisplayMessage()), createConstraint(row++, indent));
+            }
+            if (log.getLogLevel() != null)
+            {
+                formattedInfo.add(createFilterLabel("Level", log.getLogLevel().toString()), createConstraint(row++, indent));
+            }
+            if (log.getCategoryName() != null)
+            {
+                formattedInfo.add(createFilterLabel("Category", log.getCategoryName()), createConstraint(row++, indent));
+            }
+            if (log.getEventId() != null)
+            {
+                formattedInfo.add(createFilterLabel("EventId.Id", Integer.toString(log.getEventId().getId())), createConstraint(row++, indent));
+                if (log.getEventId().getName() != null)
+                {
+                    formattedInfo.add(createFilterLabel("EventId.Name", log.getEventId().getName()), createConstraint(row++, indent));
+                }
+            }
+            if (log.getException() != null) {
+                if (log.getException().getType() != null)
+                {
+                    formattedInfo.add(createFilterLabel("Exception Type", log.getException().getType()), createConstraint(row++, indent));
+                }
+                if (log.getException().getMessage() != null)
+                {
+                    formattedInfo.add(createFilterLabel("Exception Message", log.getException().getMessage()), createConstraint(row++, indent));
+                }
+            }
+            if (log.getFormattedAttributes() != null)
+            {
+                formattedInfo.add(createTitleLabel("Attributes"), createConstraint(row++, 0));
+                for (Map.Entry<String, String> entry : log.getFormattedAttributes().entrySet()) {
+                    var value = entry.getValue();
+                    if (value == null) {
+                        value = "";
+                    }
+                    var label = createFilterLabel(entry.getKey(), value);
+                    formattedInfo.add(label, createConstraint(row++, indent));
+                }
+            }
+        }
+
+        //Add trace information
+        if (telemetry.getTraceIds() != null) {
+            formattedInfo.add(createTitleLabel("Trace"), createConstraint(row++, 0));
+            for (Map.Entry<String, String> entry : telemetry.getTraceIds().entrySet()) {
+                var label = createFilterLabel(entry.getKey(), entry.getValue());
                 formattedInfo.add(label, createConstraint(row++, indent));
             }
         }

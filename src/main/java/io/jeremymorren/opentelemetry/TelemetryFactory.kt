@@ -1,4 +1,5 @@
 @file:OptIn(ExperimentalSerializationApi::class)
+@file:Suppress("UNREACHABLE_CODE")
 
 package io.jeremymorren.opentelemetry
 
@@ -6,7 +7,9 @@ import com.intellij.openapi.diagnostic.Logger
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.decodeFromJsonElement
 
 class TelemetryFactory {
     // Very long lines can be split into multiple parts
@@ -24,15 +27,15 @@ class TelemetryFactory {
         }
 
         currentValue.append(value)
-        if (!value.endsWith("}")) {
-            return null
-        }
 
         val json = currentValue.toString().substring(openTelemetryLogPrefix.length - 2)
+        val jsonElement = tryParseJson(json)
+            ?: return null  // Not a complete telemetry log
+
         currentValue.clear()
 
         return try {
-            val telemetry = Json.decodeFromString<Telemetry>(json)
+            val telemetry = Json.decodeFromJsonElement<Telemetry>(jsonElement)
             return TelemetryItem(formatJson(json), telemetry)
         } catch (e: SerializationException) {
             val logger = Logger.getInstance(TelemetryFactory::class.java)
@@ -49,5 +52,13 @@ class TelemetryFactory {
         }
         val obj = Json.decodeFromString<JsonObject>(json)
         return prettyJson.encodeToString(JsonObject.serializer(), obj)
+    }
+
+    private fun tryParseJson(json: String): JsonElement? {
+        return try {
+            return Json.decodeFromString<JsonElement>(json)
+        } catch (e: SerializationException) {
+            return null
+        }
     }
 }

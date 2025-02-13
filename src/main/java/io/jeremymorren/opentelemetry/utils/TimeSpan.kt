@@ -1,6 +1,11 @@
 package io.jeremymorren.opentelemetry.utils
 
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import java.text.DecimalFormat
 import java.time.Duration
 
@@ -10,6 +15,7 @@ import java.time.Duration
  * @property minutes Minute component
  * @property seconds Seconds component
  */
+@Serializable(with = TimeSpanSerializer::class)
 class TimeSpan : Comparable<TimeSpan> {
     val hours: Int
     val minutes: Int
@@ -68,4 +74,16 @@ class TimeSpan : Comparable<TimeSpan> {
         get() = (hours * 3_600) + (minutes * 60) + seconds
 
     override fun compareTo(other: TimeSpan): Int = totalSeconds.compareTo(other.totalSeconds)
+}
+
+object TimeSpanSerializer : KSerializer<TimeSpan> {
+    override val descriptor = PrimitiveSerialDescriptor("TimeSpan", PrimitiveKind.STRING)
+
+    override fun serialize(encoder: Encoder, value: TimeSpan) {
+        encoder.encodeString(value.toString())
+    }
+
+    override fun deserialize(decoder: Decoder): TimeSpan {
+        return TimeSpan(decoder.decodeString())
+    }
 }

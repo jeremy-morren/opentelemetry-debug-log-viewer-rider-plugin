@@ -32,7 +32,7 @@ class TelemetryTableModel : AbstractTableModel() {
         return when (columnIndex) {
             0 -> telemetry.timestamp
             1 -> telemetry.duration
-            2 -> telemetry.type
+            2 -> telemetry.telemetry.type
             3 -> telemetry.telemetry
             else -> null
         }

@@ -9,6 +9,7 @@ import kotlinx.datetime.toJavaInstant
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonIgnoreUnknownKeys
+import java.net.URI
 import java.util.*
 import kotlin.time.toJavaDuration
 
@@ -19,13 +20,9 @@ data class TelemetryItem(
 {
     val lowerCaseJson: String = json.lowercase(Locale.getDefault())
 
-    val type: TelemetryType? = telemetry.getType()
-
     val timestamp: java.time.Instant? = telemetry.getTimestamp()?.toJavaInstant()
 
-    val duration: TimeSpan? = telemetry.activity?.getElapsed()
-
-    val sql: String? = telemetry.activity?.getDbQuery()
+    val duration: TimeSpan? = telemetry.activity?.duration
 }
 
 @Serializable
@@ -33,21 +30,27 @@ data class TelemetryItem(
 data class Telemetry(
     val activity: Activity? = null,
     val metric: Metric? = null,
-    val log: LogMessage? = null
+    val log: LogMessage? = null,
+    val resource: Resource? = null
 )
 {
-    fun getType(): TelemetryType? {
+    val traceIds: Map<String, String>? = activity?.getTraceIds() ?: log?.getTraceIds();
+
+    val sql: String? = activity?.getDbQuery()
+
+    val type: TelemetryType? =
         if (activity != null) {
-            return activity.getType()
+            activity.getType()
         }
-        if (log != null) {
-            return log.getType()
+        else if (log != null) {
+            log.getType()
         }
-        if (metric != null) {
-            return TelemetryType.Metric
+        else if (metric != null) {
+            TelemetryType.Metric
         }
-        return null
-    }
+        else {
+            null
+        }
 
     fun getTimestamp(): Instant? {
         val ts = activity?.startTime ?: metric?.lastPoint?.startTime ?: log?.timestamp
@@ -90,8 +93,8 @@ data class Activity(
     val displayName: String? = null,
     val kind: ActivityKind? = null,
     val startTime: String? = null,
-    val duration: String? = null,
-    val tags: Map<String, String?>? = null,
+    val duration: TimeSpan? = null,
+    val formattedTags: Map<String, String?>? = null,
     val operationName: String? = null,
     val status: ActivityStatusCode? = null,
     val statusDescription: String? = null,
@@ -103,24 +106,17 @@ data class Activity(
 
     val isError: Boolean =
         status == ActivityStatusCode.Error
-                || tags?.containsKey("error.type") == true
-                || tags?.get("otel.status_code") == "ERROR"
+                || formattedTags?.containsKey("error.type") == true
+                || formattedTags?.get("otel.status_code") == "ERROR"
 
     fun getType(): TelemetryType {
-        if (kind == ActivityKind.Server && tags != null && tags.containsKey("url.path")) {
+        if (kind == ActivityKind.Server && formattedTags != null && formattedTags.containsKey("url.path")) {
             return TelemetryType.Request
         }
         if (kind == ActivityKind.Client) {
             return TelemetryType.Dependency
         }
         return TelemetryType.Activity
-    }
-
-    fun getElapsed() : TimeSpan? {
-        if (duration == null) {
-            return null
-        }
-        return TimeSpan(duration);
     }
 
     private fun createTypeDisplay(): String {
@@ -134,23 +130,35 @@ data class Activity(
     }
 
     fun getRequestPath(): String? {
-        if (tags == null) return null;
+        if (formattedTags == null) return null;
         val sb = StringBuilder();
-        sb.append(tags.getOrDefault("url.path", ""));
-        sb.append(tags.getOrDefault("url.query", ""));
+        sb.append(formattedTags.getOrDefault("url.path", ""));
+        sb.append(formattedTags.getOrDefault("url.query", ""));
         if (sb.isEmpty()) return null;
         return sb.toString();
     }
 
-    private fun getFullUrl(): String? = tags?.get("url.full");
+    private fun getUrlPath(): String? {
+        val value = formattedTags?.get("url.full") ?: return null
+        try {
+            // Try to parse the URL and return the path and query
+            val uri = URI(value)
+            if (uri.query == null) {
+                return uri.path
+            }
+            return uri.path + uri.query
+        } catch (e: Exception) {
+            return value;
+        }
+    };
 
-    fun getDbQuery(): String? = (tags?.get("db.query.text") ?: tags?.get("db.statement"))?.replace("\r", "")
+    fun getDbQuery(): String? = (formattedTags?.get("db.query.text") ?: formattedTags?.get("db.statement"))?.replace("\r", "")
 
-    private fun getDbName(): String? = tags?.get("db.name")
+    private fun getDbName(): String? = formattedTags?.get("db.name")
 
-    private fun getResponseStatusCode(): String? = tags?.get("http.response.status_code")
+    private fun getResponseStatusCode(): String? = formattedTags?.get("http.response.status_code")
 
-    fun getErrorDisplay(): String? = tags?.get("error.type") ?: tags?.get("otel.status_description")
+    fun getErrorDisplay(): String? = formattedTags?.get("error.type") ?: formattedTags?.get("otel.status_description")
 
     // Get the subtype of the activity (e.g. HTTP, SQL)
     private fun getSubType(): String? {
@@ -234,8 +242,8 @@ data class Activity(
         if (getDbQuery() != null) {
             parts.add(getDbQuery()!!)
         }
-        if (getFullUrl() != null) {
-            parts.add(getFullUrl()!!)
+        if (getUrlPath() != null) {
+            parts.add(getUrlPath()!!)
         }
         if (parts.size == 0) {
             return null
@@ -265,7 +273,7 @@ data class ActivitySource(
 data class ActivityEvent(
     val name: String? = null,
     val timestamp: String? = null,
-    val attributes: Map<String, String>? = null,
+    val formattedAttributes: Map<String, String>? = null,
 )
 {
     fun getTimestamp(): Instant? = timestamp?.let { Instant.parse(it) }
@@ -308,7 +316,7 @@ data class Metric(
     val unit: String? = null,
     val meterName: String? = null,
     val meterVersion: String? = null,
-    val meterTags:  Map<String,String?>? = null,
+    val formattedMeterTags:  Map<String,String?>? = null,
     val points: List<MetricPoint>? = null
 )
 {
@@ -368,12 +376,11 @@ data class LogMessage(
     val logLevel: LogLevel? = null,
     val timestamp: String? = null,
     val exception: ExceptionInfo? = null,
-    val attributes: Map<String, String?>? = null,
+    val formattedAttributes: Map<String, String?>? = null,
     val traceId: String? = null,
     val spanId: String? = null,
     val categoryName: String? = null,
-    val eventId: EventId? = null,
-    val resource: Resource? = null
+    val eventId: EventId? = null
 )
 {
     val displayMessage: String? = createDisplayMessage()
@@ -416,8 +423,9 @@ data class LogMessage(
             else -> null
         }
         var msg = "[$level] $body";
-        for ((key, value) in attributes ?: emptyMap()) {
+        for ((key, value) in formattedAttributes ?: emptyMap()) {
             msg = msg.replace("{$key}", value ?: "\$null", true)
+            msg = msg.replace("{@$key}", value ?: "\$null", true)
         }
         return msg
     }
@@ -442,7 +450,7 @@ data class EventId(
 @Serializable
 @JsonIgnoreUnknownKeys
 data class Resource(
-    val attributes: Map<String, String>? = null
+    val formattedAttributes: Map<String, String>? = null
 )
 
 @Serializable

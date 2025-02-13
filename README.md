@@ -9,32 +9,43 @@ The logs will appear in a new tab(OpenTelemetry tab) in the debugger session.
 
 You can enable opentelemetry debug logs with below dependency in your dotnet project
 
-https://www.nuget.org/packages/Ozkanpakdil.OpenTelemetry.Exporter.Json.Console
-```xml
-<ItemGroup>
-    ...
-    <PackageReference Include="Ozkanpakdil.OpenTelemetry.Exporter.Json.Console" Version="1.0.13" />
-    ...
-</ItemGroup>
+https://www.nuget.org/packages/JeremyMorren.OpenTelemetry.Exporter.Console.Json
+
+```shell
+dotnet add package JeremyMorren.OpenTelemetry.Exporter.Console.Json
 ```
 
 ```csharp
-using OpenTelemetry.Exporter;
+using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
-using Ozkanpakdil.OpenTelemetry.Exporter.Json.Console;
+using OpenTelemetry.Exporter.Console.Json;
 
-var tracerProvider = Sdk.CreateTracerProviderBuilder()
-    .AddHttpClientInstrumentation()
+var tracer = Sdk.CreateTracerProviderBuilder()
     .AddJsonConsoleExporter(o => o.Targets = ConsoleExporterOutputTargets.Debug)
+    // Add activity sources to the provider
     .Build();
 
-var client = new HttpClient();
-await client.GetAsync("https://github.com/");
+var metrics = Sdk.CreateMeterProviderBuilder()
+    .AddJsonConsoleExporter(o => o.Targets = ConsoleExporterOutputTargets.Debug)
+    // Add instrumentation sources to the provider
+    .Build();
 ```
+
+### Kudos
+
+Kudos to https://github.com/Socolin/ApplicationInsightsRiderPlugin and https://github.com/ozkanpakdil/opentelemetry-debug-log-viewer-rider-plugin
+
+### Screenshot
+
+![Screenshot1](screenshots/screenshot1.png)
 
 ### Dev
 
 To edit and test the plugin, just open this project with [InteliJ IDEA](https://www.jetbrains.com/idea/) and run the plugin with predefined run configuration
+
+### Latest dev version
+
+Latest version can be found [here](https://github.com/jeremy-morren/opentelemetry-debug-log-viewer-rider-plugin)
 
 ### Build
 
@@ -44,14 +55,3 @@ To edit and test the plugin, just open this project with [InteliJ IDEA](https://
 
 Then the plugins will be in `build/distributions`
 
-### Screenshot
-
-![Screenshot](screenshots/screenshot1.png)
-
-### Kudos
-
-Kudos to https://github.com/Socolin/ApplicationInsightsRiderPlugin and https://github.com/ozkanpakdil/opentelemetry-debug-log-viewer-rider-plugin
-
-### Latest dev version
-
-Latest version can be found [here](https://github.com/jeremy-morren/opentelemetry-debug-log-viewer-rider-plugin)

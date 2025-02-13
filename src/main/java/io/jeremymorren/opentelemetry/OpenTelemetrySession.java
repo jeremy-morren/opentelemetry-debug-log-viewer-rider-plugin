@@ -161,7 +161,7 @@ public class OpenTelemetrySession {
     }
 
     private boolean isTelemetryVisible(@NotNull TelemetryItem telemetry) {
-        var type = telemetry.getType();
+        var type = telemetry.getTelemetry().getType();
         if (type != null && !projectSettingsState.getTelemetryVisible(type))
             return false;
         for (String filteredLog : projectSettingsState.filteredLogs.getValue()) {
