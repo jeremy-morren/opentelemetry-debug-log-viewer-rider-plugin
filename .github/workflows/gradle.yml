@@ -2,7 +2,7 @@ name: Java CI with Gradle
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "actions" ]
   pull_request:
     branches: [ "*" ]
 permissions:
@@ -11,31 +11,21 @@ permissions:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up JDK
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v2
+
+      - name: Build plugin
+        uses: eskatos/gradle-command-action@v1.4.0
         with:
-          java-version: '23'
-          distribution: 'temurin'
-      - name: Build with Gradle Wrapper
-        run: ./gradlew :buildPlugin -PbuildType=stable
+          arguments: buildPlugin --stacktrace -PbuildType=stable
+
+      - name: Unpack Distribution
+        shell: pwsh
+        run: scripts/Unpack-Distribution.ps1
+
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.3.4
         with:
-          name: Package
-          path: build/distributions
-#      - uses: "marvinpinto/action-automatic-releases@latest"
-#        with:
-#          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-#          automatic_release_tag: "latest_dev"
-#          prerelease: true
-#          title: "Development Build"
-#          files: |
-#            build/distributions/*
-#        id: "automatic_releases"
+          name: SpecFlowPlugin
+          path: build/distributions/unpacked
