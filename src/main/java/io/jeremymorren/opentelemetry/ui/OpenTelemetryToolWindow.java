@@ -32,6 +32,7 @@ import com.intellij.util.concurrency.AppExecutorUtil;
 import com.intellij.util.ui.JBUI;
 import com.jetbrains.rd.util.lifetime.Lifetime;
 import io.jeremymorren.opentelemetry.*;
+import io.jeremymorren.opentelemetry.models.*;
 import io.jeremymorren.opentelemetry.ui.components.*;
 import io.jeremymorren.opentelemetry.ui.renderers.InstantRenderer;
 import io.jeremymorren.opentelemetry.ui.renderers.TelemetryRenderer;
@@ -336,22 +337,12 @@ public class OpenTelemetryToolWindow {
         count++;
         telemetryCountPerType.put(type, count);
 
-        var text = count.toString();
-        var formatter = new DecimalFormat("0.0");
-        if (count > 1_000_000)
-        {
-            text = formatter.format(count / 1_000_000.0) + "M";
-        }
-        else if (count > 1_000)
-        {
-            text = formatter.format(count / 1_000.0) + "K";
-        }
 
         for (JLabel counter: telemetryTypesCounter)
         {
             TelemetryType telemetryType = (TelemetryType) counter.getClientProperty("TelemetryType");
             if (telemetryType == type) {
-                counter.setText(text);
+                counter.setText(format(count));
                 break;
             }
         }
@@ -447,12 +438,18 @@ public class OpenTelemetryToolWindow {
                 label.setToolTipText("Time spent before first response received");
                 formattedInfo.add(label, createConstraint(row++, indent));
             }
+            if (activity.getDbReadTime() != null) {
+                var label = new JLabel("Read Time: " + activity.getDbReadTime());
+                label.setToolTipText("Time spent reading data from the database");
+                formattedInfo.add(label, createConstraint(row++, indent));
+            }
+
             if (activity.getRequestPath() != null) {
                 formattedInfo.add(createFilterLabel("Path", activity.getRequestPath()), createConstraint(row++, indent));
             }
-            if (activity.getFormattedTags() != null) {
+            if (activity.getTags() != null) {
                 formattedInfo.add(createTitleLabel("Tags"), createConstraint(row++, 0));
-                for (Map.Entry<String, String> entry : activity.getFormattedTags().entrySet()) {
+                for (Map.Entry<String, String> entry : activity.getTags().getPrimitiveValues().entrySet()) {
                     var label = createFilterLabel(entry.getKey(), entry.getValue());
                     formattedInfo.add(label, createConstraint(row++, indent));
                 }
@@ -476,35 +473,57 @@ public class OpenTelemetryToolWindow {
             if (metric.getUnit() != null) {
                 formattedInfo.add(createFilterLabel("Unit", metric.getUnit()), createConstraint(row++, indent));
             }
-            if (metric.getLastPoint() != null) {
-                var point = metric.getLastPoint();
-                formattedInfo.add(createTitleLabel("Last Point"), createConstraint(row++, 0));
-                if (point.getLongSum() != null) {
-                    formattedInfo.add(new JLabel("Long Sum: " + point.getLongSum()), createConstraint(row++, indent));
-                }
-                if (point.getDoubleSum() != null) {
-                    formattedInfo.add(new JLabel("Double Sum: " + point.getDoubleSum()), createConstraint(row++, indent));
-                }
-                if (point.getLongGauge() != null) {
-                    formattedInfo.add(new JLabel("Long Gauge: " + point.getLongGauge()), createConstraint(row++, indent));
-                }
-                if (point.getDoubleGauge() != null) {
-                    formattedInfo.add(new JLabel("Double Gauge: " + point.getDoubleGauge()), createConstraint(row++, indent));
-                }
-                if (point.getHistogramCount() != null) {
-                    formattedInfo.add(new JLabel("Histogram Count: " + point.getHistogramCount()), createConstraint(row++, indent));
-                }
-                if (point.getHistogramSum() != null) {
-                    formattedInfo.add(new JLabel("Histogram Sum: " + point.getHistogramSum()), createConstraint(row++, indent));
+            if (metric.getDuration() != null) {
+                formattedInfo.add(new JLabel("Duration: " + metric.getDuration().toString()), createConstraint(row++, indent));
+            }
+            if (metric.getTaggedPoints() != null) {
+                var taggedPoints = metric.getTaggedPoints();
+                formattedInfo.add(createTitleLabel("Points"), createConstraint(row++, 0));
+                for (var i = 0; i < taggedPoints.size(); i++) {
+                    var point = taggedPoints.get(i);
+                    if (point.getLongSum() != null) {
+                        var sum = format(point.getLongSum());
+                        formattedInfo.add(new JLabel("Sum: " + sum), createConstraint(row++, indent));
+                    }
+                    if (point.getDoubleSum() != null) {
+                        var sum = format(point.getDoubleSum());
+                        formattedInfo.add(new JLabel("Sum: " + sum), createConstraint(row++, indent));
+                    }
+                    if (point.getLongGauge() != null) {
+                        var gauge = format(point.getLongGauge());
+                        formattedInfo.add(new JLabel("Gauge: " + gauge), createConstraint(row++, indent));
+                    }
+                    if (point.getDoubleGauge() != null) {
+                        var gauge = format(point.getDoubleGauge());
+                        formattedInfo.add(new JLabel("Gauge: " + gauge), createConstraint(row++, indent));
+                    }
+                    if (point.getHistogramCount() != null) {
+                        var count = format(point.getHistogramCount());
+                        formattedInfo.add(new JLabel("Histogram Count: " + count), createConstraint(row++, indent));
+                    }
+                    if (point.getHistogramSum() != null) {
+                        var sum = format(point.getHistogramSum());
+                        formattedInfo.add(new JLabel("Histogram Sum: " + sum), createConstraint(row++, indent));
+                    }
+                    if (point.getTags() != null) {
+                        for (Map.Entry<String, String> entry : point.getTags().getPrimitiveValues().entrySet()) {
+                            var label = createFilterLabel(entry.getKey(), entry.getValue());
+                            formattedInfo.add(label, createConstraint(row++, indent));
+                        }
+                    }
+                    if (i < taggedPoints.size() - 1) {
+                        //Add blank line between points
+                        formattedInfo.add(new JPanel(), createConstraint(row++, 0));
+                    }
                 }
             }
         }
         if (telemetry.getLog() != null) {
             var log = telemetry.getLog();
             formattedInfo.add(createTitleLabel(log.getType().toString()), createConstraint(row++, 0));
-            if (log.getDisplayMessage() != null)
+            if (log.getFormattedMessage() != null)
             {
-                formattedInfo.add(createFilterLabel("Message", log.getDisplayMessage()), createConstraint(row++, indent));
+                formattedInfo.add(createFilterLabel("Message", log.getFormattedMessage()), createConstraint(row++, indent));
             }
             if (log.getLogLevel() != null)
             {
@@ -532,10 +551,10 @@ public class OpenTelemetryToolWindow {
                     formattedInfo.add(createFilterLabel("Exception Message", log.getException().getMessage()), createConstraint(row++, indent));
                 }
             }
-            if (log.getFormattedAttributes() != null)
+            if (log.getAttributes() != null)
             {
                 formattedInfo.add(createTitleLabel("Attributes"), createConstraint(row++, 0));
-                for (Map.Entry<String, String> entry : log.getFormattedAttributes().entrySet()) {
+                for (Map.Entry<String, String> entry : log.getAttributes().getPrimitiveValues().entrySet()) {
                     var value = entry.getValue();
                     if (value == null) {
                         value = "";
@@ -566,7 +585,19 @@ public class OpenTelemetryToolWindow {
         formattedInfo.repaint();
     }
 
-    private JLabel createFilterLabel(String label, String value) {
+    @NotNull
+    private JLabel createFilterLabel(@Nullable String label, @Nullable String value) {
+        if (label == null) {
+            label = "";
+        }
+        if (value == null) {
+            value = "";
+        }
+        return createFilterLabelFinal(label, value);
+    }
+
+    @NotNull
+    private JLabel createFilterLabelFinal(@Nullable String label, @Nullable String value) {
         var display = value.replace("\r", "").replace("\n", " ");
         if (display.length() > 100) {
             display = display.substring(0, 100) + "...";
@@ -581,7 +612,7 @@ public class OpenTelemetryToolWindow {
     }
 
     @NotNull
-    private JLabel createTitleLabel(String label) {
+    private JLabel createTitleLabel(@Nullable String label) {
         JLabel title = new JLabel("<html><b>" + escapeHtml(label) + "</b></html>");
         Font font = title.getFont();
         font.deriveFont(Font.BOLD);
@@ -607,8 +638,53 @@ public class OpenTelemetryToolWindow {
         return gridConstraints;
     }
 
-    private static String escapeHtml(String s) {
+    /**
+     * Escapes a string for HTML display
+     */
+    @NotNull
+    private static String escapeHtml(@Nullable String s) {
+        if (s == null) {
+            return "";
+        }
         return org.apache.commons.text.StringEscapeUtils.escapeHtml4(s);
+    }
+
+    /**
+     * Formats a long value to a human-readable string (with K and M suffixes)
+     */
+    @NotNull
+    private static String format(Integer value) {
+        return format(value.longValue());
+    }
+
+    /**
+     * Formats a long value to a human-readable string (with K and M suffixes)
+     */
+    @NotNull
+    private static String format(Long value) {
+        if (value < 1_000) {
+            return value.toString();
+        }
+        var formatter = new DecimalFormat("#,###.0");
+        if (value < 1_000_000) {
+            return formatter.format(value / 1_000.0) + " K";
+        }
+        return formatter.format(value / 1_000_000.0) + " M";
+    }
+
+    /**
+     * Formats a long value to a human-readable string (with K and M suffixes)
+     */
+    @NotNull
+    private static String format(Double value) {
+        if (value < 1_000.0) {
+            return value.toString();
+        }
+        var formatter = new DecimalFormat("#,###.0");
+        if (value < 1_000_000.0) {
+            return formatter.format(value / 1_000.0) + " K";
+        }
+        return formatter.format(value / 1_000_000.0) + " M";
     }
 }
 

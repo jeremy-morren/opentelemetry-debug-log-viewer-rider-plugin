@@ -9,7 +9,6 @@ import com.intellij.util.xmlb.XmlSerializerUtil;
 import com.intellij.util.xmlb.annotations.OptionTag;
 import com.jetbrains.rd.util.lifetime.LifetimeDefinition;
 import com.jetbrains.rd.util.reactive.Property;
-import io.jeremymorren.opentelemetry.TelemetryType;
 import io.jeremymorren.opentelemetry.settings.converters.BooleanPropertyConverter;
 import io.jeremymorren.opentelemetry.settings.converters.FilterTelemetryModePropertyConverter;
 import kotlin.Unit;

@@ -1,9 +1,9 @@
 package io.jeremymorren.opentelemetry.ui
 
-import io.jeremymorren.opentelemetry.Telemetry
-import io.jeremymorren.opentelemetry.TelemetryItem
-import io.jeremymorren.opentelemetry.TelemetryType
-import io.jeremymorren.opentelemetry.utils.TimeSpan
+import io.jeremymorren.opentelemetry.models.Telemetry
+import io.jeremymorren.opentelemetry.models.TelemetryItem
+import io.jeremymorren.opentelemetry.models.TelemetryType
+import io.jeremymorren.opentelemetry.models.TimeSpan
 import java.time.Instant
 import java.util.*
 import javax.swing.table.AbstractTableModel

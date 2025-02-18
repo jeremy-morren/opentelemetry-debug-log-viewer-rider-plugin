@@ -36,7 +36,6 @@
         <dependencySupport kind="dotnet" coordinate="OpenTelemetry.Trace" displayName="OpenTelemetry Debug Log Viewer"/>
         <dependencySupport kind="dotnet" coordinate="OpenTelemetry.Metrics" displayName="OpenTelemetry Debug Log Viewer"/>
         <dependencySupport kind="dotnet" coordinate="OpenTelemetry.Logs" displayName="OpenTelemetry Debug Log Viewer"/>
-        <dependencySupport kind="dotnet" coordinate="OpenTelemetry.Exporter.OpenTelemetryProtocol" displayName="OpenTelemetry Debug Log Viewer"/>
     </extensions>
 
     <actions>

@@ -4,6 +4,8 @@
 package io.jeremymorren.opentelemetry
 
 import com.intellij.openapi.diagnostic.Logger
+import io.jeremymorren.opentelemetry.models.Telemetry
+import io.jeremymorren.opentelemetry.models.TelemetryItem
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json

@@ -9,7 +9,7 @@ import com.intellij.util.xmlb.XmlSerializerUtil;
 import com.intellij.util.xmlb.annotations.OptionTag;
 import com.jetbrains.rd.util.lifetime.LifetimeDefinition;
 import com.jetbrains.rd.util.reactive.Property;
-import io.jeremymorren.opentelemetry.TelemetryType;
+import io.jeremymorren.opentelemetry.models.TelemetryType;
 import io.jeremymorren.opentelemetry.settings.converters.BooleanPropertyConverter;
 import io.jeremymorren.opentelemetry.settings.converters.StringArrayPropertyConverter;
 import kotlin.Unit;
@@ -26,8 +26,6 @@ public class ProjectSettingsState implements PersistentStateComponentWithModific
 
     @OptionTag(converter = BooleanPropertyConverter.class)
     public final Property<Boolean> caseInsensitiveFiltering = new Property<>(false);
-    @OptionTag(converter = StringArrayPropertyConverter.class)
-    public final Property<String[]> filteredLogs = new Property<>(new String[0]);
 
     // Filters
     @OptionTag(converter = BooleanPropertyConverter.class)
@@ -65,7 +63,6 @@ public class ProjectSettingsState implements PersistentStateComponentWithModific
 
     private void registerAllPropertyToIncrementTrackerOnChanges(@NotNull ProjectSettingsState state) {
         incrementTrackerWhenPropertyChanges(state.caseInsensitiveFiltering);
-        incrementTrackerWhenPropertyChanges(state.filteredLogs);
     }
 
     private <T> void incrementTrackerWhenPropertyChanges(Property<T> property) {

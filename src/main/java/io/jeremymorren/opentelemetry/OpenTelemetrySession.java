@@ -4,11 +4,13 @@ import com.intellij.openapi.util.IconLoader;
 import com.intellij.ui.content.Content;
 import com.jetbrains.rd.util.lifetime.Lifetime;
 import com.jetbrains.rider.debugger.DotNetDebugProcess;
+import io.jeremymorren.opentelemetry.models.TelemetryItem;
+import io.jeremymorren.opentelemetry.models.TelemetryType;
 import io.jeremymorren.opentelemetry.settings.AppSettingState;
 import io.jeremymorren.opentelemetry.settings.FilterTelemetryMode;
 import io.jeremymorren.opentelemetry.settings.ProjectSettingsState;
 import io.jeremymorren.opentelemetry.ui.OpenTelemetryToolWindow;
-import io.jeremymorren.opentelemetry.utils.TimeSpan;
+import io.jeremymorren.opentelemetry.models.TimeSpan;
 import kotlin.Unit;
 import org.eclipse.lsp4j.jsonrpc.validation.NonNull;
 import org.jetbrains.annotations.NotNull;
@@ -34,7 +36,18 @@ public class OpenTelemetrySession {
     private final Lifetime lifetime;
     @NotNull
     private String filter = "";
-    private String filterLowerCase = "";
+
+    /**
+     * Filter string, escaped to JSON string
+     */
+    private String filterEscaped = "";
+
+    /**
+     * Filter string in lower case, escaped to JSON string
+     */
+    private String filterLowerCaseEscaped = "";
+
+
     @Nullable
     private OpenTelemetryToolWindow openTelemetryToolWindow;
     private boolean firstMessage = true;
@@ -53,10 +66,6 @@ public class OpenTelemetrySession {
             return Unit.INSTANCE;
         });
         AppSettingState.getInstance().caseInsensitiveSearch.advise(lifetime, (v) -> {
-            this.updateFilteredTelemetries();
-            return Unit.INSTANCE;
-        });
-        projectSettingsState.filteredLogs.advise(lifetime, (v) -> {
             this.updateFilteredTelemetries();
             return Unit.INSTANCE;
         });
@@ -87,7 +96,11 @@ public class OpenTelemetrySession {
 
     public void updateFilter(@NonNull String filter) {
         this.filter = filter;
-        this.filterLowerCase = filter.toLowerCase(Locale.ROOT);
+
+        //NB: We have to escape the string to JSON to allow filtering on special characters
+        this.filterEscaped = escapeJson(filter);
+        this.filterLowerCaseEscaped = filterEscaped.toLowerCase(Locale.ROOT);
+
         updateFilteredTelemetries();
     }
 
@@ -164,21 +177,12 @@ public class OpenTelemetrySession {
         var type = telemetry.getTelemetry().getType();
         if (type != null && !projectSettingsState.getTelemetryVisible(type))
             return false;
-        for (String filteredLog : projectSettingsState.filteredLogs.getValue()) {
-            if (projectSettingsState.caseInsensitiveFiltering.getValue()) {
-                if (telemetry.getLowerCaseJson().contains(filteredLog.toLowerCase()))
-                    return false;
-            } else {
-                if (telemetry.getJson().contains(filteredLog))
-                    return false;
-            }
-        }
 
         if (!filter.isEmpty()) {
             if (AppSettingState.getInstance().caseInsensitiveSearch.getValue())
-                return telemetry.getLowerCaseJson().toLowerCase().contains(filterLowerCase);
+                return telemetry.getLowerCaseJson().toLowerCase().contains(filterLowerCaseEscaped);
             else
-                return telemetry.getJson().contains(filter);
+                return telemetry.getJson().contains(filterEscaped);
         }
 
         return true;
@@ -194,5 +198,9 @@ public class OpenTelemetrySession {
         if (telemetry.getTimestamp() == null)
             return Instant.EPOCH;
         return telemetry.getTimestamp();
+    }
+
+    private static String escapeJson(String input) {
+        return input.replace("\\", "\\\\");
     }
 }

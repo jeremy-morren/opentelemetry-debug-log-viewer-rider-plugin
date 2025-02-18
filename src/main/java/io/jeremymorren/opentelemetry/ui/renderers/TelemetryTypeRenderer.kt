@@ -1,7 +1,7 @@
 package io.jeremymorren.opentelemetry.ui.renderers
 
 import com.intellij.ui.JBColor
-import io.jeremymorren.opentelemetry.TelemetryType
+import io.jeremymorren.opentelemetry.models.TelemetryType
 import java.awt.Component
 import javax.swing.JTable
 

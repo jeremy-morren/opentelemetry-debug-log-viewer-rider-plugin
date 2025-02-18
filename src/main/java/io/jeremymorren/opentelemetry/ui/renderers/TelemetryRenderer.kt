@@ -1,9 +1,8 @@
 package io.jeremymorren.opentelemetry.ui.renderers
 
 import com.intellij.ui.JBColor
-import io.jeremymorren.opentelemetry.ActivityStatusCode
-import io.jeremymorren.opentelemetry.LogLevel
-import io.jeremymorren.opentelemetry.Telemetry
+import io.jeremymorren.opentelemetry.models.LogLevel
+import io.jeremymorren.opentelemetry.models.Telemetry
 import java.awt.Component
 import javax.swing.JTable
 

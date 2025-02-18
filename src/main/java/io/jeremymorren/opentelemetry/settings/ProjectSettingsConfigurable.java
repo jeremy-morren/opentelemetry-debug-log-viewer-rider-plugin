@@ -40,23 +40,19 @@ public class ProjectSettingsConfigurable implements SearchableConfigurable {
     @Override
     public boolean isModified() {
         ProjectSettingsState settings = ProjectSettingsState.getInstance(project);
-        boolean modified = mySettingsComponent.getCaseInsensitiveFiltering() != settings.caseInsensitiveFiltering.getValue();
-        modified |= !Arrays.equals(mySettingsComponent.getFilteredLogs(), settings.filteredLogs.getValue());
-        return modified;
+        return mySettingsComponent.getCaseInsensitiveFiltering() != settings.caseInsensitiveFiltering.getValue();
     }
 
     @Override
     public void apply() {
         ProjectSettingsState settings = ProjectSettingsState.getInstance(project);
         settings.caseInsensitiveFiltering.setValue(mySettingsComponent.getCaseInsensitiveFiltering());
-        settings.filteredLogs.setValue(mySettingsComponent.getFilteredLogs());
     }
 
     @Override
     public void reset() {
         ProjectSettingsState settings = ProjectSettingsState.getInstance(project);
         mySettingsComponent.setCaseInsensitiveFiltering(settings.caseInsensitiveFiltering.getValue());
-        mySettingsComponent.setFilteredLogs(settings.filteredLogs.getValue());
     }
 
     @Override
