@@ -4,14 +4,15 @@ import com.intellij.openapi.util.IconLoader;
 import com.intellij.ui.content.Content;
 import com.jetbrains.rd.util.lifetime.Lifetime;
 import com.jetbrains.rider.debugger.DotNetDebugProcess;
+import io.jeremymorren.opentelemetry.models.TelemetryFactory;
 import io.jeremymorren.opentelemetry.models.TelemetryItem;
 import io.jeremymorren.opentelemetry.models.TelemetryType;
 import io.jeremymorren.opentelemetry.settings.AppSettingState;
 import io.jeremymorren.opentelemetry.settings.FilterTelemetryMode;
 import io.jeremymorren.opentelemetry.settings.ProjectSettingsState;
 import io.jeremymorren.opentelemetry.ui.OpenTelemetryToolWindow;
-import io.jeremymorren.opentelemetry.models.TimeSpan;
 import kotlin.Unit;
+import java.time.Duration;
 import org.eclipse.lsp4j.jsonrpc.validation.NonNull;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -188,9 +189,9 @@ public class OpenTelemetrySession {
         return true;
     }
 
-    private static TimeSpan getDuration(TelemetryItem telemetry) {
+    private static Duration getDuration(TelemetryItem telemetry) {
         if (telemetry.getDuration() == null)
-            return new TimeSpan(0, 0, 0);
+            return java.time.Duration.ZERO;
         return telemetry.getDuration();
     }
 

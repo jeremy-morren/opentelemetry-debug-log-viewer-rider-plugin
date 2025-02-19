@@ -3,16 +3,16 @@
 
 package io.jeremymorren.opentelemetry.models
 
-import kotlinx.datetime.Instant
+import io.jeremymorren.opentelemetry.util.InstantSerializer
+import io.jeremymorren.opentelemetry.util.TimeSpanSerializer
+import java.time.Instant
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonIgnoreUnknownKeys
 import java.net.URI
 import java.util.*
-import kotlin.time.toJavaDuration
+import java.time.Duration
 
 @Serializable
-@JsonIgnoreUnknownKeys
 data class Activity(
     val rootId: String? = null,
     val traceId: String? = null,
@@ -23,8 +23,10 @@ data class Activity(
     val source: ActivitySource? = null,
     val displayName: String? = null,
     val kind: ActivityKind? = null,
-    val startTime: String? = null,
-    val duration: TimeSpan? = null,
+    @Serializable(with = InstantSerializer::class)
+    val startTime: Instant? = null,
+    @Serializable(with = TimeSpanSerializer::class)
+    val duration: Duration? = null,
     val tags: ObjectDictionary? = null,
     val operationName: String? = null,
     val status: ActivityStatusCode? = null,
@@ -152,17 +154,14 @@ data class Activity(
     /**
      * Gets the time spent in the database (i.e. time between start of activity and first response received)
      */
-    val dbQueryTime: TimeSpan? get() {
+    val dbQueryTime: Duration? get() {
         if (events == null || startTime == null) {
             return null
         }
-        val startTs = Instant.parse(startTime)
         // Find the event called "received-first-response"
         for (event in events) {
-            val eventTs = event.getTimestamp()
-            if (event.name == "received-first-response" && eventTs != null) {
-                val duration = eventTs - startTs
-                return TimeSpan.fromDuration(duration.toJavaDuration())
+            if (event.name == "received-first-response" && event.timestamp != null) {
+                return Duration.between(startTime, event.timestamp)
             }
         }
         return null
@@ -171,7 +170,7 @@ data class Activity(
     /**
      * Gets the time spent reading from the database (i.e. time between first response received and end of activity)
      */
-    val dbReadTime: TimeSpan? get() {
+    val dbReadTime: Duration? get() {
         if (dbQueryTime == null || duration == null) {
             return null
         }
@@ -233,7 +232,6 @@ data class Activity(
 }
 
 @Serializable
-@JsonIgnoreUnknownKeys
 data class ActivitySource(
     val name: String,
     val version: String? = null
@@ -243,15 +241,12 @@ data class ActivitySource(
 }
 
 @Serializable
-@JsonIgnoreUnknownKeys
 data class ActivityEvent(
     val name: String? = null,
-    val timestamp: String? = null,
+    @Serializable(with = InstantSerializer::class)
+    val timestamp: Instant? = null,
     val attributes: ObjectDictionary? = null,
 )
-{
-    fun getTimestamp(): Instant? = timestamp?.let { Instant.parse(it) }
-}
 
 /**
  * Activity status code.

@@ -1,20 +1,17 @@
-@file:OptIn(ExperimentalSerializationApi::class)
 @file:Suppress("unused")
 
 package io.jeremymorren.opentelemetry.models
 
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonIgnoreUnknownKeys
-import java.time.Duration
+import io.jeremymorren.opentelemetry.util.InstantSerializer
 import java.time.Instant
+import kotlinx.serialization.Serializable
+import java.time.Duration
 
 
 /**
  * A metric.
  */
 @Serializable
-@JsonIgnoreUnknownKeys
 data class Metric(
     val metricType: String? = null,
     val temporality: String? = null,
@@ -35,7 +32,7 @@ data class Metric(
     /**
      * The timestamp of the metric, if available.
      */
-    val timestamp: String? get() {
+    val timestamp: Instant? get() {
         if (points == null) {
             return null
         }
@@ -97,17 +94,18 @@ data class Metric(
     /**
      * The measurement duration.
      */
-    val duration: TimeSpan? get() = points?.firstNotNullOf { it.duration }
+    val duration: Duration? get() = points?.firstNotNullOf { it.duration }
 }
 
 /**
  * A metric point.
  */
 @Serializable
-@JsonIgnoreUnknownKeys
 data class MetricPoint(
-    val startTime: String? = null,
-    val endTime: String? = null,
+    @Serializable(with = InstantSerializer::class)
+    val startTime: Instant? = null,
+    @Serializable(with = InstantSerializer::class)
+    val endTime: Instant? = null,
     val tags: ObjectDictionary? = null,
     val longSum: Long? = null,
     val doubleSum: Double? = null,
@@ -117,10 +115,8 @@ data class MetricPoint(
     val histogramSum: Double? = null
 )
 {
-    val duration: TimeSpan? get() {
+    val duration: Duration? get() {
         if (startTime == null || endTime == null) return null
-        val start = Instant.parse(startTime)
-        val end = Instant.parse(endTime)
-        return TimeSpan.fromDuration(Duration.between(start, end))
+        return Duration.between(startTime, endTime)
     }
 }

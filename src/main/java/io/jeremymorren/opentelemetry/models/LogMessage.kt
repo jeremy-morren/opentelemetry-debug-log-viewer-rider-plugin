@@ -3,17 +3,18 @@
 
 package io.jeremymorren.opentelemetry.models
 
+import io.jeremymorren.opentelemetry.util.InstantSerializer
+import java.time.Instant
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonIgnoreUnknownKeys
 
 @Serializable
-@JsonIgnoreUnknownKeys
 data class LogMessage(
     val body: String? = null,
     val formattedMessage: String? = null,
     val logLevel: LogLevel? = null,
-    val timestamp: String? = null,
+    @Serializable(with = InstantSerializer::class)
+    val timestamp: Instant? = null,
     val exception: ExceptionInfo? = null,
     val attributes: ObjectDictionary? = null,
     val traceId: String? = null,
@@ -78,7 +79,6 @@ data class LogMessage(
 }
 
 @Serializable
-@JsonIgnoreUnknownKeys
 data class ExceptionInfo(
     val message: String? = null,
     val display: String? = null,
@@ -87,7 +87,6 @@ data class ExceptionInfo(
 )
 
 @Serializable
-@JsonIgnoreUnknownKeys
 data class EventId(
     val id: Int,
     val name: String? = null

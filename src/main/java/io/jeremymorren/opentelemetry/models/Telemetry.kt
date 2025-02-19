@@ -3,16 +3,14 @@
 
 package io.jeremymorren.opentelemetry.models
 
-import kotlinx.datetime.Instant
+import java.time.Instant
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonIgnoreUnknownKeys
 import kotlin.Int
 import kotlin.OptIn
 import kotlin.Suppress
 
 @Serializable
-@JsonIgnoreUnknownKeys
 data class Telemetry(
     val activity: Activity? = null,
     val metric: Metric? = null,
@@ -31,7 +29,7 @@ data class Telemetry(
             ?: log?.timestamp
             ?: metric?.timestamp
         if (ts != null) {
-            return Instant.parse(ts)
+            return ts
         }
         return null
     }

@@ -34,9 +34,14 @@ import com.jetbrains.rd.util.lifetime.Lifetime;
 import io.jeremymorren.opentelemetry.*;
 import io.jeremymorren.opentelemetry.models.*;
 import io.jeremymorren.opentelemetry.ui.components.*;
+import io.jeremymorren.opentelemetry.ui.renderers.DurationRenderer;
 import io.jeremymorren.opentelemetry.ui.renderers.InstantRenderer;
 import io.jeremymorren.opentelemetry.ui.renderers.TelemetryRenderer;
 import io.jeremymorren.opentelemetry.ui.renderers.TelemetryTypeRenderer;
+import java.time.Duration;
+
+import io.jeremymorren.opentelemetry.util.DurationFormatter;
+import java.time.Instant;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -46,7 +51,6 @@ import java.awt.event.ItemEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.text.DecimalFormat;
-import java.time.Instant;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -152,6 +156,7 @@ public class OpenTelemetryToolWindow {
 
         logsTable.setDefaultRenderer(Telemetry.class, new TelemetryRenderer());
         logsTable.setDefaultRenderer(Instant.class, new InstantRenderer());
+        logsTable.setDefaultRenderer(Duration.class, new DurationRenderer());
         logsTable.setDefaultRenderer(TelemetryType.class, new TelemetryTypeRenderer());
         logsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
@@ -422,7 +427,8 @@ public class OpenTelemetryToolWindow {
                 formattedInfo.add(createFilterLabel("Source", activity.getSource().getName()), createConstraint(row++, indent));
             }
             if (activity.getDuration() != null) {
-                formattedInfo.add(new JLabel("Duration: " + activity.getDuration().toString()), createConstraint(row++, indent));
+                var duration = DurationFormatter.Companion.format(activity.getDuration());
+                formattedInfo.add(new JLabel("Duration: " + duration), createConstraint(row++, indent));
             }
             if (activity.getDisplayName() != null) {
                 formattedInfo.add(createFilterLabel("Display name", activity.getDisplayName()), createConstraint(row++, indent));
@@ -434,12 +440,12 @@ public class OpenTelemetryToolWindow {
                 formattedInfo.add(createFilterLabel("Status", activity.getErrorDisplay()), createConstraint(row++, indent));
             }
             if (activity.getDbQueryTime() != null) {
-                var label = new JLabel("DB Time: " + activity.getDbQueryTime());
+                var label = new JLabel("DB Time: " + DurationFormatter.Companion.format(activity.getDbQueryTime()));
                 label.setToolTipText("Time spent before first response received");
                 formattedInfo.add(label, createConstraint(row++, indent));
             }
             if (activity.getDbReadTime() != null) {
-                var label = new JLabel("Read Time: " + activity.getDbReadTime());
+                var label = new JLabel("Read Time: " + DurationFormatter.Companion.format(activity.getDbReadTime()));
                 label.setToolTipText("Time spent reading data from the database");
                 formattedInfo.add(label, createConstraint(row++, indent));
             }
@@ -474,7 +480,8 @@ public class OpenTelemetryToolWindow {
                 formattedInfo.add(createFilterLabel("Unit", metric.getUnit()), createConstraint(row++, indent));
             }
             if (metric.getDuration() != null) {
-                formattedInfo.add(new JLabel("Duration: " + metric.getDuration().toString()), createConstraint(row++, indent));
+                var duration = DurationFormatter.Companion.format(metric.getDuration());
+                formattedInfo.add(new JLabel("Duration: " + duration), createConstraint(row++, indent));
             }
             if (metric.getTaggedPoints() != null) {
                 var taggedPoints = metric.getTaggedPoints();

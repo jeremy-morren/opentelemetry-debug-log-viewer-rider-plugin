@@ -36,11 +36,7 @@
         <dependencySupport kind="dotnet" coordinate="OpenTelemetry.Trace" displayName="OpenTelemetry Debug Log Viewer"/>
         <dependencySupport kind="dotnet" coordinate="OpenTelemetry.Metrics" displayName="OpenTelemetry Debug Log Viewer"/>
         <dependencySupport kind="dotnet" coordinate="OpenTelemetry.Logs" displayName="OpenTelemetry Debug Log Viewer"/>
-    </extensions>
-
-    <actions>
-        <!-- Add your actions here -->
-    </actions>
+    </extensions>1
 
     <projectListeners>
         <listener class="io.jeremymorren.opentelemetry.listeners.DebugMessageListener"

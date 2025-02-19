@@ -21,6 +21,7 @@ open class TelemetryRendererBase : JLabel(), TableCellRenderer {
         } else {
             super.setBackground(JBColor.namedColor("Table.background", JBColor.gray))
         }
+        super.setText(value?.toString() ?: "")
         return this
     }
 }

@@ -2,6 +2,8 @@ package io.jeremymorren.opentelemetry.models
 
 import kotlinx.datetime.toJavaInstant
 import java.util.*
+import java.time.Duration
+import java.time.Instant
 
 data class TelemetryItem(
     val json: String,
@@ -10,7 +12,7 @@ data class TelemetryItem(
 {
     val lowerCaseJson: String = json.lowercase(Locale.getDefault())
 
-    val timestamp: java.time.Instant? = telemetry.timestamp?.toJavaInstant()
+    val timestamp: Instant? = telemetry.timestamp
 
-    val duration: TimeSpan? = telemetry.activity?.duration
+    val duration: Duration? = telemetry.activity?.duration
 }

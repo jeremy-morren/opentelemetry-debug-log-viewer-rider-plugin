@@ -3,18 +3,18 @@ package io.jeremymorren.opentelemetry.ui
 import io.jeremymorren.opentelemetry.models.Telemetry
 import io.jeremymorren.opentelemetry.models.TelemetryItem
 import io.jeremymorren.opentelemetry.models.TelemetryType
-import io.jeremymorren.opentelemetry.models.TimeSpan
 import java.time.Instant
 import java.util.*
 import javax.swing.table.AbstractTableModel
 import kotlin.math.max
+import java.time.Duration
 
 class TelemetryTableModel : AbstractTableModel() {
     private val columnNames = arrayOf(
         "timestamp", "duration", "type", "detail"
     )
     private val columnClass = arrayOf<Class<*>>(
-        Instant::class.java, TimeSpan::class.java, TelemetryType::class.java, Telemetry::class.java
+        Instant::class.java, Duration::class.java, TelemetryType::class.java, Telemetry::class.java
     )
 
     private val telemetries: MutableList<TelemetryItem> = ArrayList()
