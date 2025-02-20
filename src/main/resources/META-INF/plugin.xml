@@ -1,15 +1,16 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
     <id>com.jeremymorren.opentelemetryriderdebugviewer</id>
-    <name>Open Telemetry Debug Logs Viewer for Rider</name>
-    <vendor email="jeremy.morren@outlook.com">jeremy-morren</vendor>
+    <name>Open Telemetry Debug Logs Viewer</name>
+
+    <vendor email="jeremy.morren@outlook.com" url="https://github.com/jeremy-morren">Jeremy Morren</vendor>
 
     <description><![CDATA[
     Open Telemetry for Rider
 
     View Open telemetry output instantly within JetBrains Rider.
 
-    Usage: Enable open telemetry debug export and start a debug session.
+    Usage: Enable open telemetry JSON debug export and start a debug session.
     Logs will automatically appear in a new tab.
     ]]>
     </description>
@@ -36,7 +37,7 @@
         <dependencySupport kind="dotnet" coordinate="OpenTelemetry.Trace" displayName="OpenTelemetry Debug Log Viewer"/>
         <dependencySupport kind="dotnet" coordinate="OpenTelemetry.Metrics" displayName="OpenTelemetry Debug Log Viewer"/>
         <dependencySupport kind="dotnet" coordinate="OpenTelemetry.Logs" displayName="OpenTelemetry Debug Log Viewer"/>
-    </extensions>1
+    </extensions>
 
     <projectListeners>
         <listener class="io.jeremymorren.opentelemetry.listeners.DebugMessageListener"

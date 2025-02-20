@@ -27,18 +27,18 @@ class DurationFormatter {
             val format = DecimalFormat("0.0")
             if (duration.toSeconds() > 0) {
                 val seconds = duration.toSeconds() + (duration.toNanosPart() / 1_000_000_000.0)
-                return "${format.format(seconds)}s"
+                return "${format.format(seconds)} s"
             }
             if (duration.toMillis() > 0) {
                 val milliseconds = duration.toNanos() / 1_000_000.0
-                return "${format.format(milliseconds)}ms"
+                return "${format.format(milliseconds)} ms"
             }
             if (duration.toNanos() / 1_000 > 0) {
                 val microseconds = duration.toNanos() / 1_000.0
-                return "${format.format(microseconds)}µs"
+                return "${format.format(microseconds)} µs"
             }
 
-            return "${duration.toNanos()}ns"
+            return "${duration.toNanos()} ns"
         }
     }
 }

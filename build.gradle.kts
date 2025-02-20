@@ -45,8 +45,8 @@ val riderSdkPath by lazy {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
-    implementation("org.apache.commons:commons-text:1.11.0")
+    implementation(libs.kotlinJsonSerialization);
+    implementation(libs.apacheCommonsText);
 
     intellijPlatform {
         rider(riderSdkVersion)
